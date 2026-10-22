@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-plex), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-bg: #0b0b0b;
+  --color-surface: #151515;
+  --color-surface-2: #1e1e1e;
+  --color-line: #333333;
+  --color-ink: #f5f5ef;
+  --color-muted: #b8b8b0;
+  --color-cream: #fffff5;
+  --color-maroon: #8a1c2b;
+  --color-maroon-hover: #a32436;
+  --color-maroon-soft: #eba5af;
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-ink font-sans;
+  }
+  :focus-visible {
+    outline: 2px solid #fffff5;
+    outline-offset: 2px;
+  }
+}
