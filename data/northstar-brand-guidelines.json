@@ -1,0 +1,945 @@
+{
+  "schema_version": "1.0.0",
+  "pack_id": "northstar-demo-pack",
+  "is_fictional": true,
+  "fictional_notice": "FICTIONAL TEST DATA — NOT A REAL COMPANY. Northstar Planner is an invented brand. Every name, product, price, policy, owner role, and fact in this pack is invented for software testing and describes no real company, product, or person. Do not publish this content or present it as real.",
+  "evaluation_as_of_date": "2026-10-23",
+  "brand": {
+    "name": "Northstar Planner",
+    "product_name": "Northstar Planner",
+    "category": "Work-planning application for small teams",
+    "description": "Northstar Planner is a fictional work-planning app for small teams of 5 to 50 people. It helps team leads and operations managers plan the week, keep a shared timeline, connect their calendars, and review AI-generated task suggestions. The voice is calm, clear, practical, and warm.",
+    "audience": [
+      "Team leads at small businesses",
+      "Operations managers at small businesses"
+    ],
+    "voice_attributes": [
+      "calm",
+      "clear",
+      "practical",
+      "warm"
+    ],
+    "features": [
+      "Focus Boards",
+      "Team Timeline",
+      "Calendar Sync",
+      "Assist Suggestions"
+    ],
+    "plans": [
+      "Starter",
+      "Team"
+    ],
+    "use_context": "Fictional test data for brand-governance software evaluation. It is not a description of a real product and is not for publication."
+  },
+  "documents": [
+    {
+      "id": "NS-DOC-VOICE",
+      "title": "Voice and Tone Guide",
+      "version": "2.1",
+      "owner_role": "Director of Brand and Content",
+      "last_reviewed": "2026-06-15"
+    },
+    {
+      "id": "NS-DOC-NAMING",
+      "title": "Product Naming and Terminology Standard",
+      "version": "1.6",
+      "owner_role": "Product Marketing Lead",
+      "last_reviewed": "2026-05-20"
+    },
+    {
+      "id": "NS-DOC-EDITORIAL",
+      "title": "Editorial and Formatting Standard",
+      "version": "3.2",
+      "owner_role": "Editorial Lead",
+      "last_reviewed": "2026-07-10"
+    },
+    {
+      "id": "NS-DOC-CLAIMS",
+      "title": "Claims and Evidence Policy",
+      "version": "2.4",
+      "owner_role": "Legal Counsel",
+      "last_reviewed": "2026-08-05"
+    },
+    {
+      "id": "NS-DOC-PRICING",
+      "title": "Pricing and Offers Policy",
+      "version": "1.3",
+      "owner_role": "Revenue Operations Manager",
+      "last_reviewed": "2026-09-28"
+    },
+    {
+      "id": "NS-DOC-SECURITY",
+      "title": "Security and Reliability Statement",
+      "version": "1.2",
+      "owner_role": "Security and Trust Lead",
+      "last_reviewed": "2026-09-01"
+    },
+    {
+      "id": "NS-DOC-PRODUCT",
+      "title": "Product Availability and Roadmap Statement",
+      "version": "1.1",
+      "owner_role": "Product Manager",
+      "last_reviewed": "2026-09-30"
+    }
+  ],
+  "rules": [
+    {
+      "id": "NS-TONE-001",
+      "category": "tone",
+      "title": "Calm voice with limited exclamation marks",
+      "rule_text": "Write in a calm, clear voice. Use at most one exclamation mark in a whole piece, and use none in a headline. Do not use all-caps words or phrases for emphasis.",
+      "check_method": "hybrid",
+      "severity_default": "medium",
+      "applies_to": [
+        "all_content",
+        "headlines"
+      ],
+      "source": {
+        "document_id": "NS-DOC-VOICE",
+        "section": "2.1 Calm voice"
+      },
+      "owner_role": "Director of Brand and Content",
+      "status": "active",
+      "effective_date": "2026-06-15",
+      "patterns": [
+        "!",
+        "\\b[A-Z]{3,}\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Focus Boards help your team see what matters this week.",
+      "bad_example": "FOCUS BOARDS ARE HERE!!!",
+      "fix_guidance": "Remove the extra exclamation marks and rewrite the all-caps words in sentence case.",
+      "notes": "Count exclamation marks across the whole piece, including headlines. Acronyms and product names are not all-caps emphasis; a human reviewer confirms context."
+    },
+    {
+      "id": "NS-TONE-002",
+      "category": "tone",
+      "title": "No pressure or urgency language",
+      "rule_text": "Do not pressure the reader with urgency, scarcity, fear of missing out, or commands to act immediately. Examples include 'act now', 'don't miss out', 'last chance', 'hurry', and 'limited time only'.",
+      "check_method": "computed",
+      "severity_default": "medium",
+      "applies_to": [
+        "all_content"
+      ],
+      "source": {
+        "document_id": "NS-DOC-VOICE",
+        "section": "2.2 Pressure-free language"
+      },
+      "owner_role": "Director of Brand and Content",
+      "status": "active",
+      "effective_date": "2026-06-15",
+      "patterns": [
+        "\\bact now\\b",
+        "\\bdon'?t miss out\\b",
+        "\\blast chance\\b",
+        "\\bhurry\\b",
+        "\\blimited time only\\b",
+        "\\bbuy now\\b",
+        "\\bonly \\d+ left\\b",
+        "\\boffer ends today\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Start with the free Starter plan and upgrade when your team needs more room.",
+      "bad_example": "Act now — don't miss out on the last chance to save!",
+      "fix_guidance": "Replace the pressure phrase with a factual description of the offer, plan, or deadline.",
+      "notes": "A factual deadline without pressure language is allowed, but it must also meet NS-REQ-003."
+    },
+    {
+      "id": "NS-TONE-003",
+      "category": "tone",
+      "title": "Respectful serious notices",
+      "rule_text": "Serious notices about security, outages, sign-in problems, or billing must be factual and respectful. Do not use humour, slang, or emoji. State what happened, who was affected, and what was done.",
+      "check_method": "hybrid",
+      "severity_default": "high",
+      "applies_to": [
+        "serious_notices"
+      ],
+      "source": {
+        "document_id": "NS-DOC-VOICE",
+        "section": "2.3 Serious notices"
+      },
+      "owner_role": "Director of Brand and Content",
+      "status": "active",
+      "effective_date": "2026-06-15",
+      "patterns": [
+        "\\b(oops|whoops|yikes)\\b",
+        "[\\U0001F300-\\U0001FAFF]"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "On 3 October 2026, Calendar Sync was unavailable for 40 minutes for some Team plan workspaces. The cause was a failed calendar connector update. The update was rolled back and Calendar Sync is working again.",
+      "bad_example": "Oops! Calendar Sync had a little wobble today. Sorry, folks — we're back!",
+      "fix_guidance": "Remove jokes, slang, and emoji. Add the date, the people or workspaces affected, and the action taken.",
+      "notes": "If any of the three required facts is unknown, say what is known and mark the notice for human review. Do not speculate."
+    },
+    {
+      "id": "NS-NAME-001",
+      "category": "naming",
+      "title": "Write the product name correctly",
+      "rule_text": "Write 'Northstar' as one word. The product is 'Northstar Planner'. Do not use 'North Star', 'NorthStar', 'North-Star', 'Northstar App', or 'Planner Pro'.",
+      "check_method": "hybrid",
+      "severity_default": "medium",
+      "applies_to": [
+        "all_content",
+        "product_names"
+      ],
+      "source": {
+        "document_id": "NS-DOC-NAMING",
+        "section": "3.1 Product name"
+      },
+      "owner_role": "Product Marketing Lead",
+      "status": "active",
+      "effective_date": "2026-05-20",
+      "patterns": [
+        "\\bNorth Star\\b",
+        "\\bNorthStar\\b",
+        "\\bNorth-Star\\b",
+        "\\bNorthstar App\\b",
+        "\\bPlanner Pro\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Northstar Planner keeps the weekly plan in one place.",
+      "bad_example": "NorthStar Planner is the new Planner Pro for small teams.",
+      "fix_guidance": "Use 'Northstar Planner' for the product and 'Northstar' for the brand.",
+      "notes": "A literal reference to the star is an edge case, not an error. A human reviewer decides whether the text is about astronomy or the brand."
+    },
+    {
+      "id": "NS-NAME-002",
+      "category": "naming",
+      "title": "Use exact feature names",
+      "rule_text": "Use the approved feature names: 'Focus Boards', 'Team Timeline', 'Calendar Sync', and 'Assist Suggestions'. Do not substitute generic or invented labels such as 'kanban boards', 'Gantt view', 'calendar integration', or 'AI assistant'.",
+      "check_method": "computed",
+      "severity_default": "low",
+      "applies_to": [
+        "all_content",
+        "feature_names"
+      ],
+      "source": {
+        "document_id": "NS-DOC-NAMING",
+        "section": "3.2 Feature names"
+      },
+      "owner_role": "Product Marketing Lead",
+      "status": "active",
+      "effective_date": "2026-05-20",
+      "patterns": [
+        "\\bkanban boards?\\b",
+        "\\bGantt view\\b",
+        "\\bcalendar integration\\b",
+        "\\bAI assistant\\b",
+        "\\bAI helper\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Team Timeline shows the work planned for the next few weeks.",
+      "bad_example": "The Gantt view and kanban boards are ready.",
+      "fix_guidance": "Replace the substitute with the approved feature name.",
+      "notes": "Capitalise feature names exactly as shown. Generic descriptions are allowed when they do not name a feature, but human review may be needed."
+    },
+    {
+      "id": "NS-TERM-001",
+      "category": "terminology",
+      "title": "Prefer 'team members' to 'users'",
+      "rule_text": "In customer-facing copy, prefer 'team members' to 'users'. Use 'users' only when quoting a technical or legal source that cannot be changed.",
+      "check_method": "computed",
+      "severity_default": "low",
+      "applies_to": [
+        "all_content",
+        "body_copy"
+      ],
+      "source": {
+        "document_id": "NS-DOC-NAMING",
+        "section": "4.1 People"
+      },
+      "owner_role": "Editorial Lead",
+      "status": "active",
+      "effective_date": "2026-05-20",
+      "patterns": [
+        "\\busers?\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Team members can see their assigned work on Focus Boards.",
+      "bad_example": "Users can see their assigned work on Focus Boards.",
+      "fix_guidance": "Replace 'user' or 'users' with 'team member' or 'team members'.",
+      "notes": "Do not use this rule to rewrite code, API field names, or direct quotations. Flag those for human review."
+    },
+    {
+      "id": "NS-TERM-002",
+      "category": "terminology",
+      "title": "Prefer 'plan' to 'package' or 'tier'",
+      "rule_text": "Call a commercial plan a 'plan'. Do not use 'package' or 'tier' as a synonym for a plan.",
+      "check_method": "computed",
+      "severity_default": "low",
+      "applies_to": [
+        "all_content",
+        "pricing_content"
+      ],
+      "source": {
+        "document_id": "NS-DOC-NAMING",
+        "section": "4.2 Plans"
+      },
+      "owner_role": "Editorial Lead",
+      "status": "active",
+      "effective_date": "2026-05-20",
+      "patterns": [
+        "\\bpackages?\\b",
+        "\\btiers?\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "The Team plan includes Team Timeline.",
+      "bad_example": "The Team tier includes Team Timeline.",
+      "fix_guidance": "Replace 'package' or 'tier' with 'plan'.",
+      "notes": "The words may still appear in direct quotations or legal names; flag those for human review instead of editing them."
+    },
+    {
+      "id": "NS-BAN-001",
+      "category": "banned_language",
+      "title": "No hype words",
+      "rule_text": "Do not use these hype words: revolutionary, game-changing, world-class, cutting-edge, next-generation, best-in-class, groundbreaking.",
+      "check_method": "computed",
+      "severity_default": "medium",
+      "applies_to": [
+        "all_content"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "5.1 Banned hype words"
+      },
+      "owner_role": "Editorial Lead",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [
+        "\\brevolutionary\\b",
+        "\\bgame[- ]changing\\b",
+        "\\bworld[- ]class\\b",
+        "\\bcutting[- ]edge\\b",
+        "\\bnext[- ]generation\\b",
+        "\\bbest[- ]in[- ]class\\b",
+        "\\bgroundbreaking\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "A practical planning tool for small teams.",
+      "bad_example": "A revolutionary, game-changing planning tool.",
+      "fix_guidance": "Delete the hype word and describe the feature or benefit in plain language.",
+      "notes": "Match hyphenated and spaced forms. The list is exhaustive for this pack."
+    },
+    {
+      "id": "NS-BAN-002",
+      "category": "banned_language",
+      "title": "Avoid discouraged jargon",
+      "rule_text": "Avoid these jargon terms: synergy, leverage (as a verb), rockstar, ninja, guru, crush it, no-brainer.",
+      "check_method": "hybrid",
+      "severity_default": "low",
+      "applies_to": [
+        "all_content"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "5.2 Discouraged jargon"
+      },
+      "owner_role": "Editorial Lead",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [
+        "\\bsynergy\\b",
+        "\\bleverage\\b",
+        "\\brockstars?\\b",
+        "\\bninjas?\\b",
+        "\\bgurus?\\b",
+        "\\bcrush it\\b",
+        "\\bno[- ]brainer\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Use the timeline to agree on priorities.",
+      "bad_example": "Leverage synergy to crush it like a rockstar.",
+      "fix_guidance": "Rewrite the sentence in plain language that describes the action or benefit.",
+      "notes": "'Leverage' is flagged only when it is used as a verb. The noun is uncommon in our copy but is not an error; a human reviewer confirms word class."
+    },
+    {
+      "id": "NS-REQ-001",
+      "category": "required_wording",
+      "title": "Price tax disclosure",
+      "rule_text": "Any piece that states a price, a discount, or a billing period must include the exact sentence: 'Prices exclude applicable taxes.'",
+      "check_method": "computed",
+      "severity_default": "medium",
+      "applies_to": [
+        "all_content",
+        "pricing_content"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "6.1 Price disclosure"
+      },
+      "owner_role": "Revenue Operations Manager",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [
+        "\\$\\d",
+        "\\bper team member\\b",
+        "\\bbilled annually\\b",
+        "\\bdiscount\\b"
+      ],
+      "required_phrase": "Prices exclude applicable taxes.",
+      "trigger": "A price, discount, or billing period appears anywhere in the piece.",
+      "good_example": "The Team plan costs $12 per team member per month, billed annually. Prices exclude applicable taxes.",
+      "bad_example": "The Team plan costs $12 per team member per month, billed annually.",
+      "fix_guidance": "Add the exact sentence 'Prices exclude applicable taxes.' near the price or in the pricing footnote.",
+      "notes": "The required sentence must appear exactly once per piece; do not paraphrase, shorten, or change the full stop. A price in an image alt text or table still triggers the rule."
+    },
+    {
+      "id": "NS-REQ-002",
+      "category": "required_wording",
+      "title": "AI suggestion disclosure",
+      "rule_text": "Any mention of Assist Suggestions, AI-generated task suggestions, or generated suggestions must include the exact sentence: 'Suggestions are generated by AI and should be reviewed before use.'",
+      "check_method": "computed",
+      "severity_default": "medium",
+      "applies_to": [
+        "all_content",
+        "assist_suggestions_mentions"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "6.2 AI disclosure"
+      },
+      "owner_role": "Legal Counsel",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [
+        "\\bAssist Suggestions\\b",
+        "\\bAI[- ]generated\\b",
+        "\\bgenerated suggestions?\\b",
+        "\\bAI suggestions?\\b"
+      ],
+      "required_phrase": "Suggestions are generated by AI and should be reviewed before use.",
+      "trigger": "Assist Suggestions, AI-generated suggestions, or generated suggestions are mentioned.",
+      "good_example": "Assist Suggestions can propose next tasks for the team. Suggestions are generated by AI and should be reviewed before use.",
+      "bad_example": "Assist Suggestions can propose next tasks for the team.",
+      "fix_guidance": "Add the exact disclosure sentence after the first mention.",
+      "notes": "The disclosure must not be hidden in a linked page or tooltip. It must appear in the same piece as the mention."
+    },
+    {
+      "id": "NS-REQ-003",
+      "category": "required_wording",
+      "title": "Offer end date and terms",
+      "rule_text": "Any offer, discount, or promotion must state an end date in the format '23 October 2026' and include the exact sentence: 'Terms apply.'",
+      "check_method": "hybrid",
+      "severity_default": "medium",
+      "applies_to": [
+        "offer_content",
+        "pricing_content"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "6.3 Offer disclosure"
+      },
+      "owner_role": "Revenue Operations Manager",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [
+        "\\b\\d{1,2}% off\\b",
+        "\\boffer\\b",
+        "\\bpromotion\\b",
+        "\\bdiscount\\b"
+      ],
+      "required_phrase": "Terms apply.",
+      "trigger": "An offer, discount, or promotion is described.",
+      "good_example": "The Team plan offer ends on 30 November 2026. Terms apply.",
+      "bad_example": "New workspaces get 20% off the Team plan. Don't miss it!",
+      "fix_guidance": "Add a correctly formatted end date and the exact sentence 'Terms apply.' Remove pressure language.",
+      "notes": "The end date must be a calendar date, not 'while supplies last' or 'soon'. Both the date and the sentence are required. The expired launch offer in NS-FACT-003 must not be reused as a current offer."
+    },
+    {
+      "id": "NS-FMT-001",
+      "category": "formatting",
+      "title": "Sentence-case headlines",
+      "rule_text": "Write headlines in sentence case: capitalise the first word and proper nouns only. Do not use title case or all caps.",
+      "check_method": "computed",
+      "severity_default": "low",
+      "applies_to": [
+        "headlines"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "7.1 Headline case"
+      },
+      "owner_role": "Editorial Lead",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Plan the week with your team",
+      "bad_example": "Plan The Week With Your Team",
+      "fix_guidance": "Lowercase words other than the first word and proper nouns.",
+      "notes": "Product and feature names keep their approved capitalisation inside a headline, for example 'Northstar Planner'. Acronyms such as AI and iOS are allowed."
+    },
+    {
+      "id": "NS-FMT-002",
+      "category": "formatting",
+      "title": "Human-readable dates",
+      "rule_text": "Write dates as '23 October 2026' in customer-facing copy. Do not use 2026-10-23, 10/23/2026, October 23, 2026, or 23/10/2026.",
+      "check_method": "computed",
+      "severity_default": "low",
+      "applies_to": [
+        "all_content"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "7.2 Dates"
+      },
+      "owner_role": "Editorial Lead",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [
+        "\\b\\d{4}-\\d{2}-\\d{2}\\b",
+        "\\b\\d{1,2}/\\d{1,2}/\\d{4}\\b",
+        "\\b(January|February|March|April|May|June|July|August|September|October|November|December) \\d{1,2}, \\d{4}\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "The team review is on 30 October 2026.",
+      "bad_example": "The team review is on 09/30/2026.",
+      "fix_guidance": "Rewrite the date as day month year, for example 30 October 2026.",
+      "notes": "ISO dates are allowed in metadata, API examples, and audit logs, but not in customer-facing copy. The evaluation date in the JSON is machine-readable and is displayed as 23 October 2026 in this guide."
+    },
+    {
+      "id": "NS-FMT-003",
+      "category": "formatting",
+      "title": "Price format",
+      "rule_text": "Write prices in the form '$12 per team member per month'. Do not use '/mo', '/month', '/user', or 'per user' as a shortened price unit.",
+      "check_method": "computed",
+      "severity_default": "low",
+      "applies_to": [
+        "pricing_content"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "7.3 Prices"
+      },
+      "owner_role": "Editorial Lead",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [
+        "\\$\\d+(?:\\.\\d+)?\\s*/\\s*(?:mo|month|user|seat)\\b",
+        "\\$\\d+(?:\\.\\d+)?\\s+per\\s+(?:user|seat)\\b",
+        "\\b\\d+\\s*USD\\s*/\\s*(?:mo|month)\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "The Team plan costs $12 per team member per month, billed annually. Prices exclude applicable taxes.",
+      "bad_example": "The Team plan costs $12/mo per user.",
+      "fix_guidance": "Spell out the full unit: '$12 per team member per month'.",
+      "notes": "Keep the order: amount, 'per team member', 'per month'. Use the currency symbol, not the currency code, in customer-facing copy. A monthly-equivalent figure for an annually billed plan must still use the full wording."
+    },
+    {
+      "id": "NS-FMT-004",
+      "category": "formatting",
+      "title": "Social post hashtags and emoji",
+      "rule_text": "A social post may use at most two hashtags and at most one emoji.",
+      "check_method": "computed",
+      "severity_default": "low",
+      "applies_to": [
+        "social_posts"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "7.4 Social posts"
+      },
+      "owner_role": "Editorial Lead",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [
+        "#[A-Za-z0-9_]+",
+        "[\\U0001F300-\\U0001FAFF]"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Focus Boards are ready for small teams. #NorthstarPlanner #TeamPlanning 🙂",
+      "bad_example": "Focus Boards are ready! #NorthstarPlanner #TeamPlanning #SmallTeams 🎉🚀",
+      "fix_guidance": "Remove extra hashtags or emoji so the post has no more than two hashtags and one emoji.",
+      "notes": "Count every hashtag occurrence, including repeated ones. Count visible emoji glyphs, not digits, '#', '*', or punctuation. Do not use emoji in serious notices; NS-TONE-003 takes precedence."
+    },
+    {
+      "id": "NS-FMT-005",
+      "category": "formatting",
+      "title": "Headline length",
+      "rule_text": "A headline must be 60 characters or fewer, including spaces and punctuation.",
+      "check_method": "computed",
+      "severity_default": "low",
+      "applies_to": [
+        "headlines"
+      ],
+      "source": {
+        "document_id": "NS-DOC-EDITORIAL",
+        "section": "7.5 Headline length"
+      },
+      "owner_role": "Editorial Lead",
+      "status": "active",
+      "effective_date": "2026-07-10",
+      "patterns": [],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Plan the week with your team",
+      "bad_example": "Plan the week, align the timeline, and keep every project moving forward",
+      "fix_guidance": "Shorten the headline to 60 characters or fewer, or move detail into the body copy.",
+      "notes": "Count characters, not words. This rule applies to headlines only, not body copy, button labels, or alt text."
+    },
+    {
+      "id": "NS-CLAIM-001",
+      "category": "claims",
+      "title": "No superlative or market-position claims",
+      "rule_text": "Do not claim that Northstar Planner or a feature is the fastest, best, number one, leading, most powerful, or unbeatable, or use similar market-position language.",
+      "check_method": "hybrid",
+      "severity_default": "high",
+      "applies_to": [
+        "public_claims"
+      ],
+      "source": {
+        "document_id": "NS-DOC-CLAIMS",
+        "section": "3.1 Superlatives"
+      },
+      "owner_role": "Legal Counsel",
+      "status": "active",
+      "effective_date": "2026-08-05",
+      "patterns": [
+        "\\bfastest\\b",
+        "\\bbest\\b",
+        "\\b#1\\b",
+        "\\bnumber one\\b",
+        "\\bleading\\b",
+        "\\bmost powerful\\b",
+        "\\bunbeatable\\b",
+        "\\bworld'?s best\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "A practical way for small teams to plan the week.",
+      "bad_example": "The fastest and best planning app for small teams.",
+      "fix_guidance": "Remove the superlative and describe the specific feature or benefit without ranking it.",
+      "notes": "Words such as 'best' are flagged for review even when they appear in a phrase such as 'best practice'; a human reviewer confirms whether the text is a claim about Northstar. Rankings and awards require evidence that is not approved in this pack."
+    },
+    {
+      "id": "NS-CLAIM-002",
+      "category": "claims",
+      "title": "No numeric performance or productivity claims",
+      "rule_text": "Do not make numeric performance or productivity claims, such as 'saves 10 hours', '2x faster', or 'boosts productivity by 30%', unless a verified approved fact authorises the exact claim.",
+      "check_method": "hybrid",
+      "severity_default": "high",
+      "applies_to": [
+        "public_claims"
+      ],
+      "source": {
+        "document_id": "NS-DOC-CLAIMS",
+        "section": "3.2 Performance claims"
+      },
+      "owner_role": "Legal Counsel",
+      "status": "active",
+      "effective_date": "2026-08-05",
+      "patterns": [
+        "\\bsaves? \\d+(?:\\.\\d+)?\\s*(?:hours?|minutes?|days?)\\b",
+        "\\b\\d+(?:\\.\\d+)?x (?:faster|more productive)\\b",
+        "\\b(?:increase|boost|improve|reduce)[s]? .{0,30}\\bby \\d+(?:\\.\\d+)?%\\b",
+        "\\b\\d+(?:\\.\\d+)?% (?:faster|more productive|less time)\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "See the week ahead and agree on the next task.",
+      "bad_example": "Northstar Planner saves 10 hours every week and makes teams 2x faster.",
+      "fix_guidance": "Remove the number and describe the feature or the task it supports. Do not replace it with a different unverified number.",
+      "notes": "No performance or productivity claim is approved in this pack. Even a number with 'up to' or 'on average' still requires evidence and human review."
+    },
+    {
+      "id": "NS-CLAIM-003",
+      "category": "claims",
+      "title": "No absolute security or uptime claims",
+      "rule_text": "Do not claim that Northstar Planner is '100% secure', has 'zero downtime', guarantees uptime, or is completely safe. Use only the approved wording in NS-FACT-004 and NS-FACT-005.",
+      "check_method": "computed",
+      "severity_default": "high",
+      "applies_to": [
+        "public_claims"
+      ],
+      "source": {
+        "document_id": "NS-DOC-CLAIMS",
+        "section": "3.3 Security and uptime"
+      },
+      "owner_role": "Legal Counsel",
+      "status": "active",
+      "effective_date": "2026-08-05",
+      "patterns": [
+        "\\b100% secure\\b",
+        "\\b100 percent secure\\b",
+        "\\bzero downtime\\b",
+        "\\bguaranteed uptime\\b",
+        "\\buptime guarantee\\b",
+        "\\bcompletely secure\\b",
+        "\\bfully secure\\b",
+        "\\bmilitary[- ]grade\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Customer data is encrypted in transit and at rest. Northstar Planner has a monthly uptime target of 99.5%; this is a target, not a guarantee.",
+      "bad_example": "Northstar Planner is 100% secure, with zero downtime and guaranteed uptime.",
+      "fix_guidance": "Replace the absolute claim with the approved fact wording, including the target-not-guarantee qualifier for uptime.",
+      "notes": "The approved uptime fact is a target, never a promise. Do not remove the qualifier or turn 99.5% into a guarantee. Security wording must match NS-FACT-004."
+    },
+    {
+      "id": "NS-CLAIM-004",
+      "category": "claims",
+      "title": "No competitor naming or comparison",
+      "rule_text": "Do not name a competitor or compare Northstar Planner with another product, including phrases such as 'unlike other tools' or 'better than the alternatives'.",
+      "check_method": "ai",
+      "severity_default": "medium",
+      "applies_to": [
+        "public_claims"
+      ],
+      "source": {
+        "document_id": "NS-DOC-CLAIMS",
+        "section": "3.4 Competitors"
+      },
+      "owner_role": "Legal Counsel",
+      "status": "active",
+      "effective_date": "2026-08-05",
+      "patterns": [],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Focus Boards give the team one place to agree on the week.",
+      "bad_example": "Unlike Brand X, Northstar Planner keeps the whole team aligned.",
+      "fix_guidance": "Remove the competitor name and the comparison. Describe Northstar Planner's own feature or benefit.",
+      "notes": "'Brand X' in the bad example is fictional and is not a real product. A human reviewer confirms indirect comparisons that do not name a competitor."
+    },
+    {
+      "id": "NS-CLAIM-005",
+      "category": "claims",
+      "title": "No customer-count, rating, or testimonial claims",
+      "rule_text": "Do not claim customer counts, ratings, awards, or testimonials, including 'trusted by thousands of teams', '4.9/5', 'rated number one', or 'our customers say'.",
+      "check_method": "hybrid",
+      "severity_default": "high",
+      "applies_to": [
+        "public_claims"
+      ],
+      "source": {
+        "document_id": "NS-DOC-CLAIMS",
+        "section": "3.5 Social proof"
+      },
+      "owner_role": "Legal Counsel",
+      "status": "active",
+      "effective_date": "2026-08-05",
+      "patterns": [
+        "\\btrusted by\\b",
+        "\\bthousands of (?:teams|companies|customers)\\b",
+        "\\b\\d+(?:\\.\\d+)?\\s*/\\s*5\\b",
+        "\\b\\d+(?:\\.\\d+)? stars?\\b",
+        "\\brated\\b",
+        "\\baward[- ]winning\\b",
+        "\\bour customers say\\b",
+        "\\btestimonial\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Small teams use Focus Boards to agree on the week's priorities.",
+      "bad_example": "Trusted by thousands of teams and rated 4.9/5.",
+      "fix_guidance": "Remove the count, rating, award, or testimonial. Do not invent a replacement.",
+      "notes": "No customer evidence or testimonial permission is approved in this pack. A customer quote, logo, or rating requires documented permission and human approval outside this pack."
+    },
+    {
+      "id": "NS-CLAIM-006",
+      "category": "claims",
+      "title": "No unreleased features or promised dates",
+      "rule_text": "Do not present an unreleased feature or platform as available, and do not promise a release date. State clearly when a feature is in beta, limited to a plan, or not yet available.",
+      "check_method": "hybrid",
+      "severity_default": "medium",
+      "applies_to": [
+        "release_content",
+        "platform_availability"
+      ],
+      "source": {
+        "document_id": "NS-DOC-CLAIMS",
+        "section": "3.6 Roadmap and availability"
+      },
+      "owner_role": "Product Manager",
+      "status": "active",
+      "effective_date": "2026-08-05",
+      "patterns": [
+        "\\bcoming soon\\b",
+        "\\bwill (?:launch|ship|be available)\\b",
+        "\\bavailable (?:this|next) (?:month|quarter|year)\\b",
+        "\\broadmap\\b",
+        "\\bAndroid\\b"
+      ],
+      "required_phrase": null,
+      "trigger": null,
+      "good_example": "Assist Suggestions is in beta on the Team plan and supports English only. The Android app is not yet available, and no release date has been announced.",
+      "bad_example": "The Android app launches next quarter, and Assist Suggestions is available to everyone.",
+      "fix_guidance": "Describe the current state only. Remove promised dates and any suggestion that an unreleased platform is already available.",
+      "notes": "The Android pattern is a prompt for review, not an automatic error: a factual statement that the Android app is not available is allowed under NS-FACT-007. 'Coming soon' without a date is vague but not a promise; a human reviewer decides whether it implies availability."
+    }
+  ],
+  "facts": [
+    {
+      "id": "NS-FACT-001",
+      "topic": "Starter plan limits",
+      "statement": "The Starter plan is free, supports up to 5 team members, and includes up to 3 Focus Boards.",
+      "owner_role": "Revenue Operations Manager",
+      "source": {
+        "document_id": "NS-DOC-PRICING",
+        "section": "2.1 Starter plan"
+      },
+      "valid_from": "2026-07-01",
+      "expires_on": "2027-06-30",
+      "status_on_evaluation_date": "active",
+      "days_until_expiry": 250,
+      "superseded_by": null,
+      "notes": "Approved wording for the free plan. Do not describe Starter as unlimited or add features that are not listed here."
+    },
+    {
+      "id": "NS-FACT-002",
+      "topic": "Team plan price",
+      "statement": "The Team plan costs $12 per team member per month, billed annually.",
+      "owner_role": "Revenue Operations Manager",
+      "source": {
+        "document_id": "NS-DOC-PRICING",
+        "section": "2.2 Team plan"
+      },
+      "valid_from": "2026-07-01",
+      "expires_on": "2027-06-30",
+      "status_on_evaluation_date": "active",
+      "days_until_expiry": 250,
+      "superseded_by": null,
+      "notes": "Use the full price format from NS-FMT-003 and include the tax sentence from NS-REQ-001."
+    },
+    {
+      "id": "NS-FACT-003",
+      "topic": "Launch offer",
+      "statement": "The launch offer gave new workspaces 20% off the Team plan on annual billing from 1 August 2026 to 30 September 2026.",
+      "owner_role": "Revenue Operations Manager",
+      "source": {
+        "document_id": "NS-DOC-PRICING",
+        "section": "2.3 Launch offer"
+      },
+      "valid_from": "2026-08-01",
+      "expires_on": "2026-09-30",
+      "status_on_evaluation_date": "expired",
+      "days_until_expiry": -23,
+      "superseded_by": null,
+      "notes": "EXPIRED on the evaluation date. Do not present this offer as current. Any historical mention must make clear that it has ended and must include the tax sentence and 'Terms apply.'"
+    },
+    {
+      "id": "NS-FACT-004",
+      "topic": "Encryption",
+      "statement": "Customer data is encrypted in transit and at rest.",
+      "owner_role": "Security and Trust Lead",
+      "source": {
+        "document_id": "NS-DOC-SECURITY",
+        "section": "3.1 Encryption"
+      },
+      "valid_from": "2026-04-01",
+      "expires_on": "2027-03-31",
+      "status_on_evaluation_date": "active",
+      "days_until_expiry": 159,
+      "superseded_by": null,
+      "notes": "This is the only approved encryption wording in this pack. Do not add '100%', 'military-grade', or other absolutes."
+    },
+    {
+      "id": "NS-FACT-005",
+      "topic": "Uptime target",
+      "statement": "Northstar Planner has a monthly uptime target of 99.5%. This is a target, not a guarantee.",
+      "owner_role": "Reliability Engineering Manager",
+      "source": {
+        "document_id": "NS-DOC-SECURITY",
+        "section": "3.2 Uptime target"
+      },
+      "valid_from": "2026-08-01",
+      "expires_on": "2027-01-31",
+      "status_on_evaluation_date": "active",
+      "days_until_expiry": 100,
+      "superseded_by": null,
+      "notes": "Keep both sentences together. The qualifier is mandatory; do not shorten the fact to '99.5% uptime'."
+    },
+    {
+      "id": "NS-FACT-006",
+      "topic": "Calendar Sync compatibility",
+      "statement": "Calendar Sync works with calendars that support the iCal (.ics) standard.",
+      "owner_role": "Product Manager",
+      "source": {
+        "document_id": "NS-DOC-PRODUCT",
+        "section": "4.1 Calendar Sync"
+      },
+      "valid_from": "2026-07-01",
+      "expires_on": "2027-06-30",
+      "status_on_evaluation_date": "active",
+      "days_until_expiry": 250,
+      "superseded_by": null,
+      "notes": "Do not name specific calendar providers unless a separate approved fact authorises it. Do not imply support for calendars that do not support iCal."
+    },
+    {
+      "id": "NS-FACT-007",
+      "topic": "Platform availability",
+      "statement": "Northstar Planner is available on the web and iOS. An Android app is not yet available, and no release date has been announced.",
+      "owner_role": "Product Manager",
+      "source": {
+        "document_id": "NS-DOC-PRODUCT",
+        "section": "4.2 Platforms"
+      },
+      "valid_from": "2026-07-01",
+      "expires_on": "2027-01-15",
+      "status_on_evaluation_date": "active",
+      "days_until_expiry": 84,
+      "superseded_by": null,
+      "notes": "The Android app is not available. Do not say 'coming soon' with a date or imply that it can be used now."
+    },
+    {
+      "id": "NS-FACT-008",
+      "topic": "Team Timeline plan availability",
+      "statement": "Team Timeline is on the Team plan only. It is not included in the Starter plan.",
+      "owner_role": "Product Manager",
+      "source": {
+        "document_id": "NS-DOC-PRODUCT",
+        "section": "4.3 Team Timeline"
+      },
+      "valid_from": "2026-07-01",
+      "expires_on": "2027-06-30",
+      "status_on_evaluation_date": "active",
+      "days_until_expiry": 250,
+      "superseded_by": null,
+      "notes": "Do not describe Team Timeline as available on Starter. If the plan changes, update this fact and its effective date."
+    },
+    {
+      "id": "NS-FACT-009",
+      "topic": "Assist Suggestions availability",
+      "statement": "Assist Suggestions is in beta on the Team plan and supports English only.",
+      "owner_role": "AI Product Manager",
+      "source": {
+        "document_id": "NS-DOC-PRODUCT",
+        "section": "4.4 Assist Suggestions"
+      },
+      "valid_from": "2026-09-15",
+      "expires_on": "2026-12-31",
+      "status_on_evaluation_date": "active",
+      "days_until_expiry": 69,
+      "superseded_by": null,
+      "notes": "Active but expiring soon. Always pair a mention with the AI disclosure in NS-REQ-002. Do not describe beta software as fully available or supported in other languages."
+    },
+    {
+      "id": "NS-FACT-010",
+      "topic": "Historical Team plan price",
+      "statement": "The Team plan cost $10 per team member per month until 30 June 2026.",
+      "owner_role": "Revenue Operations Manager",
+      "source": {
+        "document_id": "NS-DOC-PRICING",
+        "section": "2.4 Historical pricing"
+      },
+      "valid_from": "2025-07-01",
+      "expires_on": "2026-06-30",
+      "status_on_evaluation_date": "superseded",
+      "days_until_expiry": null,
+      "superseded_by": "NS-FACT-002",
+      "notes": "Superseded by NS-FACT-002 on 1 July 2026. Do not use this price in current copy. It may appear only in a clearly historical comparison, with human approval."
+    }
+  ]
+}
