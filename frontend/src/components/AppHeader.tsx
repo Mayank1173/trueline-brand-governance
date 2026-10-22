@@ -1,12 +1,29 @@
+
 export default function AppHeader() {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-4 py-3 md:px-8">
-      <p className="text-sm text-muted">
-        Workspace: <span className="font-semibold text-ink">Sample Brand (mock)</span>
-      </p>
-      <span className="rounded-full border border-maroon-soft px-3 py-0.5 text-xs font-semibold text-maroon-soft">
-        Sample data: backend not connected
-      </span>
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-bg px-4 py-4 md:px-8">
+      <div className="min-w-0">
+        <p className="eyebrow">Trueline / Workspace</p>
+
+        <p className="mt-1 text-sm text-muted">
+          Brand{" "}
+          <span className="font-semibold text-ink">
+            Sample Brand
+          </span>
+        </p>
+      </div>
+
+      <div
+        role="status"
+        className="inline-flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-xs text-muted"
+      >
+        <span
+          aria-hidden="true"
+          className="h-2 w-2 rounded-full bg-maroon"
+        />
+
+        <span>Demo mode · Backend not connected</span>
+      </div>
     </header>
   );
 }
