@@ -1,0 +1,609 @@
+{
+  "schema_version": "1.0.0",
+  "pack_id": "northstar-demo-pack",
+  "guidelines_file": "data/northstar-brand-guidelines.json",
+  "is_fictional": true,
+  "fictional_notice": "FICTIONAL TEST DATA — NOT A REAL COMPANY. Northstar is an invented brand. Every draft, name, product, price, person, and policy in this file is invented for software testing and describes no real company, product, or person. Do not publish this content or present it as real.",
+  "evaluation_as_of_date": "2026-10-23",
+  "offset_unit": "unicode_code_points; JavaScript string indexes use UTF-16 units and will differ after emoji",
+  "label_definitions": {
+    "violation": "The text breaks the cited rule or approved fact; a correction is required before publication.",
+    "needs_human_judgement": "The text may break a rule or fact, but the available wording is ambiguous enough that a person must decide.",
+    "unsupported": "The text makes a claim that approved facts do not support; a person must verify, revise, or remove it.",
+    "contradicted": "The text conflicts with an active approved fact.",
+    "outdated": "The text relies on a fact that was superseded or expired on the fixed evaluation date."
+  },
+  "human_review_definition": "A finding requires human review when the label is needs_human_judgement, unsupported, contradicted, or outdated, or when a reviewer must confirm a sensitive factual, legal, security, or customer-impact decision. The draft-level flag is true when at least one finding in that draft requires human review. It is an expected routing signal for this test data, not a claim that any reviewer has approved the text.",
+  "drafts": [
+    {
+      "id": "NS-DRAFT-01",
+      "title": "Homepage introduction",
+      "scenario_types": [
+        "banned_language",
+        "terminology"
+      ],
+      "channel": "website_copy",
+      "audience": "first-time visitors",
+      "purpose": "one-sentence homepage introduction",
+      "text": "Northstar Planner is a revolutionary, game-changing way for busy users to boost team synergy.",
+      "headline": null,
+      "expected_outcome": "needs_changes",
+      "human_review_required": false,
+      "expected_findings": [
+        {
+          "id": "NS-DRAFT-01-F1",
+          "span_text": "revolutionary",
+          "start": 23,
+          "end": 36,
+          "citation_id": "NS-BAN-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "banned_term",
+          "category": "banned_language",
+          "severity": "medium",
+          "expected_label": "violation",
+          "explanation": "\"Revolutionary\" is a banned hype word in the Northstar guideline pack.",
+          "suggested_correction": "Replace it with a plain description of what the product helps the team do.",
+          "human_review_required": false
+        },
+        {
+          "id": "NS-DRAFT-01-F2",
+          "span_text": "game-changing",
+          "start": 38,
+          "end": 51,
+          "citation_id": "NS-BAN-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "banned_term",
+          "category": "banned_language",
+          "severity": "medium",
+          "expected_label": "violation",
+          "explanation": "\"Game-changing\" is also a banned hype word and adds no concrete information.",
+          "suggested_correction": "Remove it and describe the benefit directly.",
+          "human_review_required": false
+        },
+        {
+          "id": "NS-DRAFT-01-F3",
+          "span_text": "users",
+          "start": 65,
+          "end": 70,
+          "citation_id": "NS-TERM-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "preferred_term",
+          "category": "terminology",
+          "severity": "low",
+          "expected_label": "violation",
+          "explanation": "The preferred term is \"team members\" in customer-facing copy.",
+          "suggested_correction": "Replace \"users\" with \"team members\".",
+          "human_review_required": false
+        },
+        {
+          "id": "NS-DRAFT-01-F4",
+          "span_text": "synergy",
+          "start": 85,
+          "end": 92,
+          "citation_id": "NS-BAN-002",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "discouraged_term",
+          "category": "banned_language",
+          "severity": "low",
+          "expected_label": "violation",
+          "explanation": "\"Synergy\" is discouraged jargon and makes the sentence less clear.",
+          "suggested_correction": "Replace it with a plain description such as \"plan work together\".",
+          "human_review_required": false
+        }
+      ],
+      "revised_text": "Northstar Planner is a practical, clear way for busy teams to plan work together.",
+      "notes": "Four independent, low-to-medium findings; all are safe for a deterministic first-pass review."
+    },
+    {
+      "id": "NS-DRAFT-02",
+      "title": "Sign-in incident notice",
+      "scenario_types": [
+        "serious_notice",
+        "tone",
+        "vague_wording"
+      ],
+      "channel": "status_notice",
+      "audience": "affected customers",
+      "purpose": "tell customers about a resolved sign-in incident",
+      "text": "Oops! 😬 We had a teeny-tiny whoopsie with sign-in this morning, lol. Some of you couldn't log in for a bit. It's all sorted now, thanks for hanging in there.",
+      "headline": null,
+      "expected_outcome": "needs_changes",
+      "human_review_required": true,
+      "expected_findings": [
+        {
+          "id": "NS-DRAFT-02-F1",
+          "span_text": "Oops! 😬 We had a teeny-tiny whoopsie with sign-in this morning, lol.",
+          "start": 0,
+          "end": 68,
+          "citation_id": "NS-TONE-003",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "serious_notice_violation",
+          "category": "tone",
+          "severity": "high",
+          "expected_label": "violation",
+          "explanation": "The opening uses humour, slang, and an emoji in a serious sign-in notice, and it does not clearly state what happened, who was affected, or what was done.",
+          "suggested_correction": "Rewrite as a factual notice with the time window, affected group, and resolution, without jokes or emoji.",
+          "human_review_required": true
+        },
+        {
+          "id": "NS-DRAFT-02-F2",
+          "span_text": "Some of you couldn't log in for a bit.",
+          "start": 69,
+          "end": 107,
+          "citation_id": "NS-TONE-003",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "vague_serious_notice",
+          "category": "tone",
+          "severity": "medium",
+          "expected_label": "violation",
+          "explanation": "This sentence is vague about who was affected and for how long, so readers cannot tell the scope of the incident.",
+          "suggested_correction": "Name the affected group and the time window, and state that the issue is fixed.",
+          "human_review_required": true
+        }
+      ],
+      "revised_text": "Some customers could not sign in between 08:10 and 08:55 this morning. The issue is fixed, and sign-in is working normally. We are sorry for the disruption.",
+      "notes": "Serious-notice test. Both findings need human review because the notice is vague and uses humour, slang, and an emoji."
+    },
+    {
+      "id": "NS-DRAFT-03",
+      "title": "Social pricing post",
+      "scenario_types": [
+        "pricing",
+        "required_wording"
+      ],
+      "channel": "social_post",
+      "audience": "small-team leads",
+      "purpose": "announce the Team plan price on social media",
+      "text": "Planning for a small team? The Team plan costs $12 per team member per month, billed annually. Start with Focus Boards today.",
+      "headline": null,
+      "expected_outcome": "needs_changes",
+      "human_review_required": false,
+      "expected_findings": [
+        {
+          "id": "NS-DRAFT-03-F1",
+          "span_text": "$12 per team member per month, billed annually",
+          "start": 47,
+          "end": 93,
+          "citation_id": "NS-REQ-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "missing_required_wording",
+          "category": "required_wording",
+          "severity": "medium",
+          "expected_label": "violation",
+          "explanation": "The post states a price but omits the required sentence \"Prices exclude applicable taxes.\"",
+          "suggested_correction": "Add the exact sentence after the price: \"Prices exclude applicable taxes.\"",
+          "human_review_required": false
+        }
+      ],
+      "revised_text": "Planning for a small team? The Team plan costs $12 per team member per month, billed annually. Prices exclude applicable taxes. Start with Focus Boards today.",
+      "notes": "Required-wording test. The only defect is the missing tax sentence; the price format itself is correct."
+    },
+    {
+      "id": "NS-DRAFT-04",
+      "title": "Landing page hero",
+      "scenario_types": [
+        "unsupported_claim",
+        "superlative",
+        "numeric_performance"
+      ],
+      "channel": "landing_page",
+      "audience": "evaluators comparing planning tools",
+      "purpose": "lead a landing page with a performance claim",
+      "text": "Northstar Planner is the fastest planning tool on the market. Teams using Northstar Planner save 10 hours every week.",
+      "headline": null,
+      "expected_outcome": "needs_changes",
+      "human_review_required": true,
+      "expected_findings": [
+        {
+          "id": "NS-DRAFT-04-F1",
+          "span_text": "the fastest planning tool on the market",
+          "start": 21,
+          "end": 60,
+          "citation_id": "NS-CLAIM-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "unsupported_claim",
+          "category": "claims",
+          "severity": "high",
+          "expected_label": "unsupported",
+          "explanation": "The superlative \"fastest ... on the market\" is an unsupported market-position claim; no approved fact supports it.",
+          "suggested_correction": "Remove the ranking and describe the planning benefit in plain language.",
+          "human_review_required": true
+        },
+        {
+          "id": "NS-DRAFT-04-F2",
+          "span_text": "Teams using Northstar Planner save 10 hours every week.",
+          "start": 62,
+          "end": 117,
+          "citation_id": "NS-CLAIM-002",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "unsupported_claim",
+          "category": "claims",
+          "severity": "high",
+          "expected_label": "unsupported",
+          "explanation": "The \"10 hours every week\" claim is a numeric productivity claim with no approved fact behind it.",
+          "suggested_correction": "Remove the number and describe the task the product supports instead.",
+          "human_review_required": true
+        }
+      ],
+      "revised_text": "Northstar Planner helps teams plan the week, share deadlines, and see who owns what.",
+      "notes": "High-severity unsupported-claim test. No approved facts support the superlative or the numeric productivity claim."
+    },
+    {
+      "id": "NS-DRAFT-05",
+      "title": "Starter plan FAQ",
+      "scenario_types": [
+        "contradicted_fact",
+        "plan_limits"
+      ],
+      "channel": "pricing_page",
+      "audience": "customers comparing Starter and Team",
+      "purpose": "explain what the Starter plan includes",
+      "text": "Starter is free for up to 10 team members. Every Starter workspace also includes Team Timeline.",
+      "headline": null,
+      "expected_outcome": "needs_changes",
+      "human_review_required": true,
+      "expected_findings": [
+        {
+          "id": "NS-DRAFT-05-F1",
+          "span_text": "up to 10 team members",
+          "start": 20,
+          "end": 41,
+          "citation_id": "NS-FACT-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "contradicted_fact",
+          "category": "approved_fact",
+          "severity": "high",
+          "expected_label": "contradicted",
+          "explanation": "The Starter plan supports up to 5 team members, not 10, so this contradicts active fact NS-FACT-001.",
+          "suggested_correction": "Change \"10\" to \"5\".",
+          "human_review_required": true
+        },
+        {
+          "id": "NS-DRAFT-05-F2",
+          "span_text": "Every Starter workspace also includes Team Timeline.",
+          "start": 43,
+          "end": 95,
+          "citation_id": "NS-FACT-008",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "contradicted_fact",
+          "category": "approved_fact",
+          "severity": "high",
+          "expected_label": "contradicted",
+          "explanation": "Team Timeline is on the Team plan only and is not included in Starter, so this contradicts active fact NS-FACT-008.",
+          "suggested_correction": "Remove the Starter claim and state that Team Timeline is available on the Team plan.",
+          "human_review_required": true
+        }
+      ],
+      "revised_text": "Starter is free for up to 5 team members. Team Timeline is available on the Team plan.",
+      "notes": "Contradicted-fact test. Both claims conflict with active approved facts."
+    },
+    {
+      "id": "NS-DRAFT-06",
+      "title": "Outdated offer sales email",
+      "scenario_types": [
+        "outdated_fact",
+        "superseded_price",
+        "expired_offer"
+      ],
+      "channel": "sales_email",
+      "audience": "prospects who requested pricing",
+      "purpose": "test stale pricing and an expired launch offer",
+      "text": "Team plan from $10 per team member per month, billed annually. Save 20% until 30 September 2026. Terms apply. Prices exclude applicable taxes.",
+      "headline": null,
+      "expected_outcome": "needs_changes",
+      "human_review_required": true,
+      "expected_findings": [
+        {
+          "id": "NS-DRAFT-06-F1",
+          "span_text": "$10 per team member per month",
+          "start": 15,
+          "end": 44,
+          "citation_id": "NS-FACT-010",
+          "acceptable_alternate_citation_ids": [
+            "NS-FACT-002"
+          ],
+          "finding_type": "superseded_fact",
+          "category": "approved_fact",
+          "severity": "high",
+          "expected_label": "outdated",
+          "explanation": "The $10 price is the old Team plan price; NS-FACT-010 was superseded by NS-FACT-002, which sets the current price at $12.",
+          "suggested_correction": "Replace \"$10\" with \"$12\" and refer to NS-FACT-002.",
+          "human_review_required": true
+        },
+        {
+          "id": "NS-DRAFT-06-F2",
+          "span_text": "Save 20% until 30 September 2026.",
+          "start": 63,
+          "end": 96,
+          "citation_id": "NS-FACT-003",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "expired_fact",
+          "category": "approved_fact",
+          "severity": "high",
+          "expected_label": "outdated",
+          "explanation": "The 20% launch offer ended on 30 September 2026, before the fixed evaluation date of 23 October 2026, so it must not be presented as current.",
+          "suggested_correction": "Remove the expired offer, or clearly mark it as historical if it is needed for context.",
+          "human_review_required": true
+        }
+      ],
+      "revised_text": "The Team plan costs $12 per team member per month, billed annually. Prices exclude applicable taxes.",
+      "notes": "Must be evaluated against the fixed evaluation date 2026-10-23, not the system clock. Both cited facts are stale: NS-FACT-010 is superseded and NS-FACT-003 is expired."
+    },
+    {
+      "id": "NS-DRAFT-07",
+      "title": "Product introduction newsletter",
+      "scenario_types": [
+        "naming_inconsistency",
+        "product_name"
+      ],
+      "channel": "email_marketing",
+      "audience": "newsletter subscribers",
+      "purpose": "introduce the product in a welcome newsletter",
+      "text": "Meet North Star Planner: a calm place to plan work, share deadlines and see who owns what. With NorthStar, your team stays on top of every task. Ready to try Planner Pro? Start on the Starter plan.",
+      "headline": null,
+      "expected_outcome": "needs_changes",
+      "human_review_required": false,
+      "expected_findings": [
+        {
+          "id": "NS-DRAFT-07-F1",
+          "span_text": "North Star Planner",
+          "start": 5,
+          "end": 23,
+          "citation_id": "NS-NAME-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "naming_inconsistency",
+          "category": "naming",
+          "severity": "medium",
+          "expected_label": "violation",
+          "explanation": "The product name is written as \"North Star Planner\"; the approved name is \"Northstar Planner\".",
+          "suggested_correction": "Use \"Northstar Planner\".",
+          "human_review_required": false
+        },
+        {
+          "id": "NS-DRAFT-07-F2",
+          "span_text": "NorthStar",
+          "start": 96,
+          "end": 105,
+          "citation_id": "NS-NAME-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "naming_inconsistency",
+          "category": "naming",
+          "severity": "medium",
+          "expected_label": "violation",
+          "explanation": "The brand is written as \"NorthStar\"; the approved form is \"Northstar\".",
+          "suggested_correction": "Use \"Northstar\" or \"Northstar Planner\".",
+          "human_review_required": false
+        },
+        {
+          "id": "NS-DRAFT-07-F3",
+          "span_text": "Planner Pro",
+          "start": 158,
+          "end": 169,
+          "citation_id": "NS-NAME-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "naming_inconsistency",
+          "category": "naming",
+          "severity": "medium",
+          "expected_label": "violation",
+          "explanation": "The product is called \"Planner Pro\", which is not an approved product name.",
+          "suggested_correction": "Replace it with \"Northstar Planner\".",
+          "human_review_required": false
+        }
+      ],
+      "revised_text": "Meet Northstar Planner: a calm place to plan work, share deadlines and see who owns what. With Northstar Planner, your team stays on top of every task. Ready to try Northstar Planner? Start on the Starter plan.",
+      "notes": "Naming-consistency test. All three findings are low-risk naming fixes and do not need specific human review."
+    },
+    {
+      "id": "NS-DRAFT-08",
+      "title": "App description",
+      "scenario_types": [
+        "ambiguous_wording",
+        "platform_availability",
+        "fact_precision"
+      ],
+      "channel": "app_description",
+      "audience": "prospective users browsing an app store",
+      "purpose": "describe calendar support and future availability",
+      "text": "Northstar Planner works with your calendar and will soon be available everywhere.",
+      "headline": null,
+      "expected_outcome": "needs_human_judgement",
+      "human_review_required": true,
+      "expected_findings": [
+        {
+          "id": "NS-DRAFT-08-F1",
+          "span_text": "works with your calendar",
+          "start": 18,
+          "end": 42,
+          "citation_id": "NS-FACT-006",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "ambiguous_wording",
+          "category": "approved_fact",
+          "severity": "medium",
+          "expected_label": "needs_human_judgement",
+          "explanation": "The phrase \"works with your calendar\" is vague and could imply support for calendars that do not use the iCal (.ics) standard.",
+          "suggested_correction": "Use the approved wording: \"Calendar Sync works with calendars that support the iCal (.ics) standard.\"",
+          "human_review_required": true
+        },
+        {
+          "id": "NS-DRAFT-08-F2",
+          "span_text": "will soon be available everywhere",
+          "start": 47,
+          "end": 80,
+          "citation_id": "NS-CLAIM-006",
+          "acceptable_alternate_citation_ids": [
+            "NS-FACT-007"
+          ],
+          "finding_type": "ambiguous_wording",
+          "category": "claims",
+          "severity": "medium",
+          "expected_label": "needs_human_judgement",
+          "explanation": "\"Will soon be available everywhere\" implies a release timeline and platform availability that no approved fact supports; Android is not yet available and no date is announced.",
+          "suggested_correction": "State the current platforms only, or mark the future plan for human review with no promised date.",
+          "human_review_required": true
+        }
+      ],
+      "revised_text": "Northstar Planner is available on the web and iOS. Calendar Sync works with calendars that support the iCal (.ics) standard.",
+      "notes": "Expected outcome is needs_human_judgement with low confidence, not a hard violation. The wording is vague rather than clearly false; a human must decide whether it overpromises."
+    },
+    {
+      "id": "NS-DRAFT-09",
+      "title": "Launch announcement stress test",
+      "scenario_types": [
+        "stress_test",
+        "social_post",
+        "mixed_findings"
+      ],
+      "channel": "social_post",
+      "audience": "small-business owners",
+      "purpose": "stress-test many rule types in one launch post",
+      "text": "🚀🚀 HUGE NEWS!!! Planner Pro is now on Android, 100% secure and trusted by thousands of teams. Plans from $10 per team member per month. Prices exclude applicable taxes. #planning #teamwork #productivity",
+      "headline": null,
+      "expected_outcome": "needs_changes",
+      "human_review_required": true,
+      "expected_findings": [
+        {
+          "id": "NS-DRAFT-09-F1",
+          "span_text": "🚀🚀",
+          "start": 0,
+          "end": 2,
+          "citation_id": "NS-FMT-004",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "formatting_violation",
+          "category": "formatting",
+          "severity": "low",
+          "expected_label": "violation",
+          "explanation": "The post uses two emoji, exceeding the limit of one emoji per social post.",
+          "suggested_correction": "Keep at most one emoji, or remove them.",
+          "human_review_required": false
+        },
+        {
+          "id": "NS-DRAFT-09-F2",
+          "span_text": "HUGE NEWS!!!",
+          "start": 3,
+          "end": 15,
+          "citation_id": "NS-TONE-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "tone_violation",
+          "category": "tone",
+          "severity": "medium",
+          "expected_label": "violation",
+          "explanation": "The headline uses all caps and three exclamation marks, breaking the calm-voice limit.",
+          "suggested_correction": "Rewrite in sentence case with no more than one exclamation mark across the piece.",
+          "human_review_required": false
+        },
+        {
+          "id": "NS-DRAFT-09-F3",
+          "span_text": "Planner Pro",
+          "start": 16,
+          "end": 27,
+          "citation_id": "NS-NAME-001",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "naming_inconsistency",
+          "category": "naming",
+          "severity": "medium",
+          "expected_label": "violation",
+          "explanation": "The product is called \"Planner Pro\", which is not an approved name.",
+          "suggested_correction": "Use \"Northstar Planner\".",
+          "human_review_required": false
+        },
+        {
+          "id": "NS-DRAFT-09-F4",
+          "span_text": "is now on Android",
+          "start": 28,
+          "end": 45,
+          "citation_id": "NS-FACT-007",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "contradicted_fact",
+          "category": "approved_fact",
+          "severity": "high",
+          "expected_label": "contradicted",
+          "explanation": "Android is not yet available, and no release date has been announced, so this contradicts active fact NS-FACT-007.",
+          "suggested_correction": "Remove the Android claim or state clearly that Android is not yet available.",
+          "human_review_required": true
+        },
+        {
+          "id": "NS-DRAFT-09-F5",
+          "span_text": "100% secure",
+          "start": 47,
+          "end": 58,
+          "citation_id": "NS-CLAIM-003",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "unsupported_claim",
+          "category": "claims",
+          "severity": "high",
+          "expected_label": "unsupported",
+          "explanation": "This is an absolute security claim with no approved fact behind it; the approved wording only says customer data is encrypted in transit and at rest.",
+          "suggested_correction": "Replace it with the approved encryption fact, without absolutes.",
+          "human_review_required": true
+        },
+        {
+          "id": "NS-DRAFT-09-F6",
+          "span_text": "trusted by thousands of teams",
+          "start": 63,
+          "end": 92,
+          "citation_id": "NS-CLAIM-005",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "unsupported_claim",
+          "category": "claims",
+          "severity": "high",
+          "expected_label": "unsupported",
+          "explanation": "This is a customer-count and social-proof claim with no approved evidence.",
+          "suggested_correction": "Remove the count and do not replace it with another unverified number.",
+          "human_review_required": true
+        },
+        {
+          "id": "NS-DRAFT-09-F7",
+          "span_text": "$10 per team member per month",
+          "start": 105,
+          "end": 134,
+          "citation_id": "NS-FACT-010",
+          "acceptable_alternate_citation_ids": [
+            "NS-FACT-002"
+          ],
+          "finding_type": "superseded_fact",
+          "category": "approved_fact",
+          "severity": "high",
+          "expected_label": "outdated",
+          "explanation": "The $10 price is the old Team plan price; NS-FACT-010 was superseded by NS-FACT-002, which sets the current price at $12.",
+          "suggested_correction": "Replace \"$10\" with \"$12\" and use the full approved price wording.",
+          "human_review_required": true
+        },
+        {
+          "id": "NS-DRAFT-09-F8",
+          "span_text": "#planning #teamwork #productivity",
+          "start": 169,
+          "end": 202,
+          "citation_id": "NS-FMT-004",
+          "acceptable_alternate_citation_ids": [],
+          "finding_type": "formatting_violation",
+          "category": "formatting",
+          "severity": "low",
+          "expected_label": "violation",
+          "explanation": "The post uses three hashtags, exceeding the limit of two per social post.",
+          "suggested_correction": "Remove one hashtag so at most two remain.",
+          "human_review_required": false
+        }
+      ],
+      "revised_text": "The Northstar Planner app is available on the web and iOS. Customer data is encrypted in transit and at rest. The Team plan costs $12 per team member per month, billed annually. Prices exclude applicable taxes. #planning #teamwork",
+      "notes": "Eight-finding stress test covering formatting, tone, naming, contradicted facts, unsupported claims and outdated facts. The revised text is the clean control for the same scenario."
+    },
+    {
+      "id": "NS-DRAFT-10",
+      "title": "Focus Boards product update",
+      "scenario_types": [
+        "fully_compliant",
+        "false_positive_control"
+      ],
+      "channel": "product_update_email",
+      "audience": "current Team plan customers",
+      "purpose": "announce a Focus Boards update without raising findings",
+      "text": "Plan your week with Focus Boards\n\nNorthstar Planner now helps your team see what is due next. Arrange tasks on Focus Boards, give each task an owner and keep your whole team on the same page. Assist Suggestions can propose next steps for your tasks. Suggestions are generated by AI and should be reviewed before use. The Assist Suggestions feature is in beta. It is available on the Team plan and works in English only. The Team plan costs $12 per team member per month, billed annually. Prices exclude applicable taxes.",
+      "headline": "Plan your week with Focus Boards",
+      "expected_outcome": "no_findings",
+      "human_review_required": false,
+      "expected_findings": [],
+      "revised_text": null,
+      "notes": "False-positive control. NS-FACT-009 is active but expires on 2026-12-31, 69 days after the evaluation date. A near-expiry notice to the fact owner is acceptable, but no finding should be raised against this draft."
+    }
+  ]
+}
