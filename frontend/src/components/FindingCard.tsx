@@ -4,11 +4,15 @@ import CitationPanel from "./CitationPanel";
 
 export type FindingState = "open" | "fix_applied" | "dismissed";
 
-const CATEGORY: Record<Finding["category"], string> = {
-  banned_term: "Banned / discouraged term",
-  tone: "Tone & voice",
-  missing_disclaimer: "Missing disclaimer",
+const CATEGORY: Record<string, string> = {
   unsupported_claim: "Unsupported claim",
+  banned_term: "Banned / discouraged term",
+  preferred_terminology: "Preferred terminology",
+  required_phrase: "Required phrase missing",
+  product_name: "Product-name consistency",
+  formatting: "Formatting",
+  length_limit: "Length limit",
+  tone: "Tone & voice",
 };
 
 interface Props {
@@ -24,6 +28,8 @@ const secondary = "rounded-full border border-line px-4 py-1.5 text-sm font-medi
 
 export default function FindingCard({ finding, state, onApply, onDismiss, onReopen }: Props) {
   const titleId = `finding-${finding.id}-title`;
+  const canFix = finding.suggested_fix !== null;
+
   return (
     <article
       aria-labelledby={titleId}
@@ -31,7 +37,7 @@ export default function FindingCard({ finding, state, onApply, onDismiss, onReop
     >
       <div className="flex flex-wrap items-center gap-2">
         <h3 id={titleId} className="text-sm font-semibold text-ink">
-          {CATEGORY[finding.category]}
+          {CATEGORY[finding.category] ?? finding.category}
         </h3>
         <SeverityBadge severity={finding.severity} />
         {finding.requires_human_review && (
@@ -40,7 +46,7 @@ export default function FindingCard({ finding, state, onApply, onDismiss, onReop
           </span>
         )}
         {finding.confidence !== undefined && (
-          <span className="text-xs text-muted">AI confidence: {Math.round(finding.confidence * 100)}%</span>
+          <span className="text-xs text-muted">AI confidence score: {finding.confidence.toFixed(2)}</span>
         )}
       </div>
 
@@ -54,21 +60,38 @@ export default function FindingCard({ finding, state, onApply, onDismiss, onReop
       <p className="mt-2 text-sm text-ink">{finding.explanation}</p>
 
       <div className="mt-3">
-        <CitationPanel citation={finding.citation} />
+        {finding.citation ? (
+          <CitationPanel citation={finding.citation} />
+        ) : (
+          <p className="rounded-xl border border-dashed border-maroon-soft p-3 text-sm text-maroon-soft">
+            ⚠ No guideline citation available for this finding. It can’t be traced to a rule, so a human should
+            verify it.
+          </p>
+        )}
       </div>
 
       <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3 text-sm">
         <span className="font-medium text-maroon-soft">Suggested fix (AI): </span>
         <span className="text-ink">
-          {finding.matched_text ? `replace with “${finding.suggested_fix}”` : `add “${finding.suggested_fix}”`}
+          {!canFix
+            ? "None proposed. Edit the draft manually."
+            : finding.matched_text
+              ? `replace with “${finding.suggested_fix}”`
+              : `add “${finding.suggested_fix}”`}
         </span>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {state === "open" && (
           <>
-            <button onClick={onApply} className={primary}>Accept fix</button>
-            <button onClick={onDismiss} className={secondary}>Dismiss</button>
+            {canFix && (
+              <button onClick={onApply} className={primary}>
+                Accept fix
+              </button>
+            )}
+            <button onClick={onDismiss} className={secondary}>
+              Dismiss
+            </button>
           </>
         )}
         {state === "fix_applied" && (
@@ -79,7 +102,9 @@ export default function FindingCard({ finding, state, onApply, onDismiss, onReop
         {state === "dismissed" && (
           <>
             <p className="text-sm text-muted">Dismissed. This issue is still in the draft.</p>
-            <button onClick={onReopen} className={secondary}>Reopen</button>
+            <button onClick={onReopen} className={secondary}>
+              Reopen
+            </button>
           </>
         )}
       </div>

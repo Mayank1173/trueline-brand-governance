@@ -5,6 +5,7 @@ import FindingCard, { type FindingState } from "@/components/FindingCard";
 import StatusBadge from "@/components/StatusBadge";
 import { brands, submitReview } from "@/lib/reviewService";
 import type { Finding, ReviewResponse } from "@/lib/types";
+import { applySuggestedFix } from "@/lib/applyFix";
 
 const field = "mt-1 w-full rounded-xl border border-line bg-surface p-2.5 text-sm text-ink placeholder:text-muted";
 
@@ -46,15 +47,16 @@ export default function ReviewPage() {
   }
 
   function applyFix(f: Finding) {
-    if (f.matched_text) {
-      if (!draft.includes(f.matched_text)) {
-        setNotice(`Couldn't find “${f.matched_text}” in the current draft. Edit it manually.`);
-        return;
-      }
-      setDraft(draft.replace(f.matched_text, f.suggested_fix));
-    } else {
-      setDraft(`${draft.trimEnd()} ${f.suggested_fix}`);
+    const next = applySuggestedFix(draft, f);
+    if (next === null) {
+      setNotice(
+        f.suggested_fix === null
+          ? "No automatic fix is available for this finding. Edit the draft manually."
+          : `Couldn't find “${f.matched_text}” in the current draft. Edit it manually.`
+      );
+      return;
     }
+    setDraft(next);
     setStates((s) => ({ ...s, [f.id]: "fix_applied" }));
     setNotice(null);
   }
