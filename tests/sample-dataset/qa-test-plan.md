@@ -208,3 +208,5 @@ Roles must be confirmed by the team; this table is a proposal.
 - **Execution:** None. No test in this plan has been run.
 - **Results:** None. No pass/fail counts, coverage percentages, or metrics exist yet. Do not add them until they come from executed tests with evidence.
 - **Open decisions:** schema confirmation, rule ID convention, `evaluation_date` source, Intent Lock requirements, review permission model, dataset availability, evidence storage location.
+
+Trigger PR for QA deliverables
