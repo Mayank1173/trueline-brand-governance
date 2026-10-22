@@ -1,83 +1,74 @@
 ﻿# Trueline Frontend
 
-Next.js + TypeScript + Tailwind CSS frontend for Trueline, an explainable brand-governance tool that reviews marketing drafts against brand guidelines before publication.
+Explainable AI brand-governance review screen. Checks marketing drafts against brand guidelines BEFORE publication. It does not schedule or generate content.
 
-> **Status:** the Draft Review screen is built and runs against a **mock service**. No real backend or AI review is connected yet. Findings shown in the UI are sample data, not real reviews.
+Stack: Next.js (App Router) + TypeScript + Tailwind CSS v4. Font: IBM Plex Mono.
 
-## Local setup
+## Run
 
-Requires Node.js 18.18 or newer.
+    cd frontend
+    npm install
+    npm run dev
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open http://localhost:3000.
-
-## Environment variables
-
-Create `frontend/.env.local` (not committed). Only public values belong here. Never put API keys or Supabase service-role secrets in frontend code.
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `NEXT_PUBLIC_USE_MOCK` | mock is **on** unless set to `false` | Switches between the mock service and the real API |
-| `NEXT_PUBLIC_API_URL` | none | Base URL of the FastAPI backend, used when mock is off |
-
-## Checks
-
-```bash
-npm run lint
-npx tsc --noEmit
-```
-
-Last recorded result: `tsc --noEmit` passed with no errors. Lint has not been recorded yet. Automated UI tests have not been written yet.
+Open http://localhost:3000. Mock mode is the default.
 
 ## Routes
 
-| Route | Status |
-|---|---|
-| `/` | Redirects to `/review` |
-| `/review` | Draft Review screen (built, mock-backed) |
-| `/dashboard`, `/guidelines`, `/approvals`, `/history` | Not built yet (shown as "soon" in the sidebar) |
+| Route | Purpose | Data |
+|---|---|---|
+| `/` | Redirects to `/dashboard` | n/a |
+| `/dashboard` | Draft overview | Sample data |
+| `/review` | Core screen: submit a draft, see findings | Mock review service |
+| `/guidelines` | Read-only brand guidelines | Sample data |
+| `/approvals` | Approve / request changes / reject | Sample data, decisions in React state only |
+| `/history` | Revisions and activity | Sample data |
 
-## Structure
+Every page backed by fake data shows a "Sample data" notice.
 
-```
-src/
-  app/            Routes and layout
-  components/     AppSidebar, AppHeader, DraftEditor, FindingCard,
-                  CitationPanel, SeverityBadge, StatusBadge
-  lib/
-    types.ts            Shared types matching the API contract
-    reviewService.ts    Single swap point between mock and real API
-    applyFix.ts         Applies a suggested fix to the draft safely
-    mock/               Mock review service (sample data only)
-```
+## Mock vs real API
 
-## API contract assumptions
+`src/lib/reviewService.ts` is the single swap point. Mock is used unless `NEXT_PUBLIC_USE_MOCK=false`. Mock logic lives in `src/lib/mock/` and is kept separate from real API code. Do not put secrets in frontend env vars.
 
-Based on the contract agreed with Mayank. Still to be confirmed with Kushal's backend.
+## API contract (approved by Mayank, NOT yet confirmed by backend)
 
-- `POST /api/review` with `brand_id`, `draft_text`, `purpose`
-- `status`: `approved`, `changes_requested`, `needs_human_review`
-- `severity`: `low`, `medium`, `high`
-- `start` / `end`: zero-based character offsets into the original draft, `end` exclusive
-- `citation`: object or `null`. The UI never invents a citation and warns when it is missing
-- `suggested_fix`: string or `null`. The UI hides "Accept fix" when it is `null`
-- `confidence`: number from 0.0 to 1.0, displayed as a score and not as a calibrated probability
+`POST /api/review` with `{brand_id, draft_text, purpose}` returns `{review_id, status, findings[]}`.
+
+- `status`: approved | changes_requested | needs_human_review
+- `severity`: low | medium | high
+- `start`/`end`: zero-based offsets into the original draft, `end` exclusive
+- `citation`: `{rule_id, source, excerpt}` or null. Never invented; null shows a "human should verify" warning
+- `suggested_fix`: string or null. Null hides "Accept fix"
+- `confidence`: 0.0 to 1.0, shown as "AI confidence score", not a calibrated probability
 - `requires_human_review`: boolean
 
-**Open questions:** how a missing-phrase finding represents `start`/`end` (the frontend currently treats an empty `matched_text` as "append"), and the final shared list of `category` values.
+## Behaviour rules
 
-## Mock behaviour
-
-The mock service (`src/lib/mock/mockReviewService.ts`) flags a few hard-coded terms and returns a fake delay. It is not an AI review. Type `__error__` in a draft to trigger the error state.
-
-## Behaviour notes
-
-- Accepting a fix edits the draft but marks the finding as "not verified" until the review is re-run.
+- Accepting a fix edits the draft and marks the finding "fix applied, not verified until you re-run the review". Never "resolved".
 - Dismissed findings stay visible and can be reopened.
-- Status and severity use icons and text, not colour alone.
-- Accessibility has not been formally tested, and no WCAG compliance is claimed.
+- A banner shows when the draft differs from the reviewed text.
+- AI recommendations and human decisions are visually distinct.
+- Request changes and Reject require a comment.
+- Severity and status badges always have an icon plus a text label, never colour alone.
+
+## Verification (run on 22 Oct 2026)
+
+- `npx tsc --noEmit`: no output on a fresh clone of this branch
+- `npm run lint`: no output (clean)
+- Manually confirmed: dev server runs; a sample draft on `/review` returns 6 findings
+- NOT verified: accept-fix flow, error state, mobile layout, no-fix and no-citation cards, Dashboard, Guidelines, Approvals, History pages
+- No automated tests. No formal accessibility testing; no WCAG claims.
+
+## Known gaps
+
+- Dashboard rows are not clickable
+- Fact expiry is not checked against today's date
+- Role switcher (Reviewer/Editor) is a demo control, not real permissions
+- Approval decisions are not persisted
+- No UI tests
+- No formal accessibility testing
+
+## Open questions for backend
+
+1. How is a missing-required-phrase finding represented in start/end? The frontend assumes empty `matched_text` means "append", with offsets omitted.
+2. Final category list. The UI shows the raw string for unknown categories.
+3. Real endpoints for brands, guidelines, history and reviewer decisions.
