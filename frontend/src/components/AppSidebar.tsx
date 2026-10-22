@@ -3,11 +3,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", ready: false },
-  { href: "/guidelines", label: "Brand Guidelines", ready: false },
-  { href: "/review", label: "Draft Review", ready: true },
-  { href: "/approvals", label: "Approvals", ready: false },
-  { href: "/history", label: "Revision History", ready: false },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/guidelines", label: "Brand Guidelines" },
+  { href: "/review", label: "Draft Review" },
+  { href: "/approvals", label: "Approvals" },
+  { href: "/history", label: "Revision History" },
 ];
 
 export default function AppSidebar() {
@@ -22,21 +22,15 @@ export default function AppSidebar() {
           const active = path === item.href;
           return (
             <li key={item.href}>
-              {item.ready ? (
-                <Link
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`block whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ${
-                    active ? "bg-maroon text-white" : "text-ink hover:bg-surface-2"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                <span aria-disabled="true" className="block whitespace-nowrap rounded-full px-4 py-2 text-sm text-muted">
-                  {item.label} <span className="text-xs">(soon)</span>
-                </span>
-              )}
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`block whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ${
+                  active ? "bg-maroon text-white" : "text-ink hover:bg-surface-2"
+                }`}
+              >
+                {item.label}
+              </Link>
             </li>
           );
         })}
