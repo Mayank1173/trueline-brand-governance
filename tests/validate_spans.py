@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 import sys
 import os
 
@@ -49,20 +49,20 @@ def main():
             end = fnd.get("end")
             span = fnd.get("span_text", "")
             if start is None or end is None:
-                print(f"FAIL: {dr['id']} finding {fnd.get('id')} has null span")
+                print(f"FAIL: file={DRAFTS} record_id={fnd.get('id')} issue=has null span")
                 all_pass = False
                 continue
             if end <= start:
-                print(f"FAIL: {dr['id']} finding {fnd.get('id')} end <= start")
+                print(f"FAIL: file={DRAFTS} record_id={fnd.get('id')} issue=end <= start")
                 all_pass = False
                 continue
             if start < 0 or end > len(cps):
-                print(f"FAIL: {dr['id']} finding {fnd.get('id')} out of bounds")
+                print(f"FAIL: file={DRAFTS} record_id={fnd.get('id')} issue=out of bounds")
                 all_pass = False
                 continue
             actual = "".join(cps[start:end])
             if actual != span:
-                print(f"FAIL: {dr['id']} finding {fnd.get('id')} text mismatch")
+                print(f"FAIL: file={DRAFTS} record_id={fnd.get('id')} issue=text mismatch")
                 all_pass = False
             else:
                 print(f"PASS: {dr['id']} finding {fnd.get('id')} span matches")
@@ -73,7 +73,7 @@ def main():
                 if cps_text[i:i+len(sp)] == sp:
                     count_cp += 1
             if count_cp != 1:
-                print(f"FAIL: {dr['id']} finding {fnd.get('id')} span appears {count_cp} times")
+                print(f"FAIL: file={DRAFTS} record_id={fnd.get('id')} issue=span appears {count_cp} times")
                 all_pass = False
             else:
                 print(f"PASS: {dr['id']} finding {fnd.get('id')} span appears exactly once")
@@ -91,20 +91,20 @@ def main():
                 end = exp.get("end")
                 span = exp.get("span_text")
                 if start is None or end is None or span is None:
-                    print(f"FAIL: {tc['id']} has null span")
+                    print(f"FAIL: file={EVAL} record_id={tc['id']} issue=has null span")
                     all_pass = False
                     continue
                 if end <= start:
-                    print(f"FAIL: {tc['id']} end <= start")
+                    print(f"FAIL: file={EVAL} record_id={tc['id']} issue=end <= start")
                     all_pass = False
                     continue
                 if start < 0 or end > len(cps):
-                    print(f"FAIL: {tc['id']} out of bounds")
+                    print(f"FAIL: file={EVAL} record_id={tc['id']} issue=out of bounds")
                     all_pass = False
                     continue
                 actual = "".join(cps[start:end])
                 if actual != span:
-                    print(f"FAIL: {tc['id']} text mismatch")
+                    print(f"FAIL: file={EVAL} record_id={tc['id']} issue=text mismatch")
                     all_pass = False
                 else:
                     print(f"PASS: {tc['id']} span matches")
@@ -115,7 +115,7 @@ def main():
                     if cps_text[i:i+len(sp)] == sp:
                         count_cp += 1
                 if count_cp != 1:
-                    print(f"FAIL: {tc['id']} span appears {count_cp} times")
+                    print(f"FAIL: file={EVAL} record_id={tc['id']} issue=span appears {count_cp} times")
                     all_pass = False
                 else:
                     print(f"PASS: {tc['id']} span appears exactly once")
