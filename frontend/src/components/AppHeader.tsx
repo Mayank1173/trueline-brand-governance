@@ -23,11 +23,7 @@ export default function AppHeader() {
           className="h-2 w-2 rounded-full bg-maroon"
         />
 
-        <span>
-          {USE_MOCK
-            ? "Demo mode · Backend not connected"
-            : "Draft Review: live backend · other pages use sample data"}
-        </span>
+        <span>{USE_MOCK ? "Demo mode · Backend not connected" : "Live backend connected"}</span>
       </div>
     </header>
   );

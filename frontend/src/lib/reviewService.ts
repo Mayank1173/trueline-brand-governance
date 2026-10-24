@@ -1,5 +1,6 @@
 import type { AIStatus, Finding, ReviewRequest, ReviewResponse } from "./types";
 import { MOCK_BRANDS, mockSubmitReview } from "./mock/mockReviewService";
+import { errorMessage } from "./api";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 const TIMEOUT_MS = 30000;
@@ -14,22 +15,7 @@ const AI_STATUSES: string[] = [
   "success",
 ];
 
-export const brands = MOCK_BRANDS; // Replace when the brands API is available.
-
-function errorMessage(body: unknown, status: number): string {
-  const fallback = `The review service returned an error (${status}).`;
-  if (typeof body !== "object" || body === null) return fallback;
-  const b = body as Record<string, unknown>;
-  if (typeof b.detail === "string") return b.detail;
-  if (Array.isArray(b.detail)) {
-    const parts = b.detail
-      .map((d) => (typeof d === "object" && d !== null && typeof (d as { msg?: unknown }).msg === "string" ? (d as { msg: string }).msg : null))
-      .filter((m): m is string => m !== null);
-    if (parts.length > 0) return `Invalid request: ${parts.join("; ")}`;
-  }
-  if (typeof b.message === "string") return b.message;
-  return fallback;
-}
+export const brands = MOCK_BRANDS; // Replace when the brands API is wired in.
 
 function normalizeFinding(raw: unknown, index: number): Finding {
   const f = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
