@@ -1,4 +1,4 @@
-﻿# Demo Script
+# Demo Script
 
 1. Load sample brand guidelines.
 2. Submit a flawed draft.
@@ -11,6 +11,18 @@
 Purpose: show Trueline as a pre-publication review layer that grounds findings in the Northstar guideline pack, explains each finding, keeps a person in control of changes, and records human approval.
 
 > **Status banner:** Demo plan only. Features are shown live only if the developers have implemented and tested them; otherwise they are labelled MOCKUP.
+
+### What is implemented and tested vs planned
+
+| Part of the demo | Status |
+|---|---|
+| Sample data (`NS-DRAFT-06`, its two expected findings, the guideline pack and fact statuses) | Implemented and tested, for data consistency only. The validation scripts and unit tests pass. This does not show that the product produces these findings. |
+| Guidelines screen, draft form, findings view, suggested-fix view, resubmission, approval, revision history, audit trace | Planned, not verified. Shown only as MOCKUP or SIMULATED. |
+| AI review engine and backend review API | Code exists, not verified for this demo. Do not call it live until the owners confirm. |
+| Intent Lock, citation validation, role-based approval, audit log | Planned. Do not claim them. |
+| Evaluation scores | NOT RUN / UNMEASURED. Show none. |
+
+At the time of writing, no step in this script is labelled `LIVE`.
 
 Fixed evaluation date for this demo: **23 October 2026**. The expired offer in the draft depends on this date.
 

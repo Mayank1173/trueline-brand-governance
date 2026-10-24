@@ -4,6 +4,26 @@ This document extends the team's base document, [`docs/requirements.md`](require
 
 Status: planning document only. No feature in this document is claimed to be built or tested.
 
+## Implementation status
+
+Status labels used in this document and in `docs/demo-script.md`:
+
+| Label | Meaning |
+|---|---|
+| Implemented and tested | A runnable check exists and its result is on record. |
+| Code exists, not verified | Code is in the repository, but nobody has checked it against these requirements. |
+| Planned | Described only. Nothing is built or tested for it. |
+
+Current status by area:
+
+| Area | Status | Evidence |
+|---|---|---|
+| Northstar sample data (guidelines, drafts, expected findings, evaluation matrix) | Implemented and tested, for data consistency only | The five validation scripts pass and 36 unit tests pass (checked at commit `ff77689`). This shows the data files agree with each other. It does not show that any product feature works. |
+| Validation scripts in `tests/` | Implemented and tested | `python tests\run_all_validations.py` and `python -m unittest tests.test_northstar_validators` |
+| AI review engine and backend review API | Code exists, not verified against these requirements | They are on other branches or on `main`. This document does not claim they meet any FR or AC. Open mapping questions are listed in `docs/dataset-mapping.md`. |
+| FR-01 to FR-33, NFR-01 to NFR-12, AC-01 to AC-25 | Planned | No product test has been run. Every row below stays `Status: planned` until a test result is on record. |
+| Evaluation scores (precision, recall, citation validity) | NOT RUN / UNMEASURED | No score is reported anywhere in this document. |
+
 ## 1. Problem statement
 
 Trueline is planned as a **pre-publication review layer**. It is not a content generator, a content management system, or a social-media scheduler.
@@ -193,7 +213,7 @@ Later features are listed in Section 10. They are not part of the MVP.
 - The MVP is planned for text review. Document upload formats are not defined. See Section 11.
 - The demo uses one fictional brand and one fictional guideline pack.
 - The data files are fictional and must not be treated as real company policy.
-- The fixed evaluation date is `2026-10-23`. Fact status and expiry checks must use this date, not the system clock.
+- The fixed evaluation date is `2026-10-23`. Fact status and expiry checks must use this date, not the system clock. OPEN: the backend-review-api branch derives fact validity from the system clock, so this requirement is not met by that code yet (see `docs/dataset-mapping.md`).
 - The sample drafts and test cases are small and do not represent production traffic.
 - The guideline `owner_role` values are content-governance metadata. They are not application roles.
 - AI output can be incomplete, invalid, or unsupported. Human review remains necessary.

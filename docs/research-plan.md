@@ -410,7 +410,7 @@ Headline findings will be added only after real data is collected. The plan targ
 | Friendly-participant bias | Friends and students may be too positive | Label practice participants, recruit outside the team, and ask about blockers |
 | Social-desirability bias | People may describe ideal behaviour rather than real behaviour | Ask what happened in a recent real case |
 | Analysis bias | The team may notice only supportive notes | Tag observations first, include contradictions, and ask a second person to review themes |
-| Confidentiality breach | Participants may share company data | Use the consent script, remove names, and delete raw notes after the agreed period |
+| Confidentiality breach | Participants may share company data | Use the consent script, remove names, and delete raw notes after the final event round, using the deletion checkpoint in section 8 |
 | Low survey response | The target may not be reached | Keep the survey short, use several channels, and report the real count |
 | Demo bias | Testers may react to the presenter rather than the product | Use task-based questions and label `MOCKUP` or `SIMULATED` sessions clearly |
 | Overclaiming | Targets may be mistaken for results | Keep the results section empty, show participant counts, and use target labels |
