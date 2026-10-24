@@ -7,5 +7,9 @@ class NotFoundError(Exception):
     pass
 
 
+class ConflictError(Exception):
+    pass
+
+
 class PersistenceError(Exception):
     pass

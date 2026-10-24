@@ -18,7 +18,7 @@ from .ai_review import (
 )
 from .citations import validate_finding_citations
 from .config import Settings
-from .errors import NotFoundError, PersistenceError
+from .errors import ConflictError, NotFoundError, PersistenceError
 from .models import ApprovedFact, Guideline, Review, ReviewEvent, ReviewFinding
 from .repositories import (
     fact_to_definition,
@@ -33,7 +33,7 @@ from .repositories import (
 )
 from .rule_engine import ENGINE_VERSION, RuleEngine
 from .rule_engine.models import FindingDraft
-from .schemas import ReviewRequest
+from .schemas import ReviewDecisionRequest, ReviewRequest
 
 _AI_NEEDS_HUMAN_REVIEW = {
     "disabled",
@@ -218,6 +218,63 @@ class ReviewService:
             raise NotFoundError(f"Unknown review_id {review_id!r}")
         return review
 
+    def decide(
+        self, session: Session, review_id: str, payload: ReviewDecisionRequest
+    ) -> tuple[Review, ReviewEvent]:
+        """Persist one explicit human decision and its audit event atomically."""
+        try:
+            review = get_review(session, review_id)
+            if review is None:
+                raise NotFoundError(f"Unknown review_id {review_id!r}")
+
+            eligible_statuses = {
+                "pending_approval",
+                "needs_human_review",
+                "changes_requested",
+            }
+            if review.status not in eligible_statuses:
+                raise ConflictError(
+                    f"Review {review_id!r} is {review.status!r}; "
+                    "only a review awaiting human action can be decided."
+                )
+
+            previous_status = review.status
+            new_status = payload.decision.value
+            reviewer = payload.reviewer or "Unknown reviewer"
+            event = ReviewEvent(
+                id=_new_id("event"),
+                sequence=max((item.sequence for item in review.events), default=0) + 1,
+                event_type=(
+                    "human_approval"
+                    if payload.decision.value == "approved"
+                    else "human_rejection"
+                ),
+                actor_type="human",
+                actor=reviewer,
+                action=(
+                    f"Reviewer recorded {payload.decision.value} decision; "
+                    f"status changed from {previous_status} to {new_status}."
+                ),
+                comment=payload.comment,
+                event_metadata={
+                    "decision": payload.decision.value,
+                    "previous_status": previous_status,
+                    "new_status": new_status,
+                    "reviewer_provided": payload.reviewer is not None,
+                },
+            )
+            review.status = new_status
+            review.events.append(event)
+            session.commit()
+            return review, event
+        except (NotFoundError, ConflictError):
+            session.rollback()
+            raise
+        except SQLAlchemyError as exc:
+            session.rollback()
+            logger.exception("Database failure while recording review decision")
+            raise PersistenceError("Could not persist the review decision") from exc
+
     def list_reviews(
         self,
         session: Session,
@@ -281,7 +338,7 @@ def _review_status(findings: list[FindingDraft], ai_status: str) -> str:
         return "needs_human_review"
     if findings:
         return "changes_requested"
-    return "approved"
+    return "pending_approval"
 
 
 def _same_issue(left: FindingDraft, right: FindingDraft) -> bool:

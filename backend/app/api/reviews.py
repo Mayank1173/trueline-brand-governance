@@ -12,6 +12,8 @@ from ..presenters import (
 )
 from ..schemas import (
     ReviewDetail,
+    ReviewDecisionRequest,
+    ReviewDecisionResponse,
     ReviewHistoryResponse,
     ReviewListResponse,
     ReviewRequest,
@@ -103,4 +105,24 @@ def get_review_history(
     return ReviewHistoryResponse(
         review_id=review.id,
         events=[review_event_response(event) for event in review.events],
+    )
+
+
+@router.post(
+    "/reviews/{review_id}/decision", response_model=ReviewDecisionResponse
+)
+def record_review_decision(
+    review_id: str,
+    payload: ReviewDecisionRequest,
+    session: SessionDep,
+    service: ReviewServiceDep,
+) -> ReviewDecisionResponse:
+    review, event = service.decide(session, review_id, payload)
+    return ReviewDecisionResponse(
+        review_id=review.id,
+        status=review.status,
+        findings=[finding_response(finding) for finding in review.findings],
+        ai_status=review.ai_status,
+        ai_error=review.ai_error,
+        decision_event=review_event_response(event),
     )

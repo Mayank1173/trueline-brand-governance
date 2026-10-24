@@ -35,7 +35,14 @@ class ReviewStatus(str, Enum):
     in_review = "in_review"
     changes_requested = "changes_requested"
     needs_human_review = "needs_human_review"
+    pending_approval = "pending_approval"
     approved = "approved"
+    rejected = "rejected"
+
+
+class ReviewDecision(str, Enum):
+    approved = "approved"
+    rejected = "rejected"
 
 
 class FindingCategory(str, Enum):
@@ -138,6 +145,26 @@ class ReviewResponse(BaseModel):
     ai_error: str | None = None
 
 
+class ReviewDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: ReviewDecision
+    reviewer: str | None = Field(default=None, min_length=1, max_length=128)
+    comment: str | None = Field(default=None, max_length=10_000)
+
+    @field_validator("reviewer", "comment")
+    @classmethod
+    def _clean_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
+
+class ReviewDecisionResponse(ReviewResponse):
+    decision_event: "ReviewEventResponse"
+
+
 class ReviewSummary(BaseModel):
     review_id: str
     brand_id: str
@@ -173,6 +200,10 @@ class ReviewEventResponse(BaseModel):
     actor: str
     action: str
     comment: str | None = None
+    previous_status: ReviewStatus | None = None
+    new_status: ReviewStatus | None = None
+    decision: ReviewDecision | None = None
+    reviewer: str | None = None
     at: datetime
 
 

@@ -84,11 +84,11 @@ def test_multiple_findings_are_returned(client):
     assert {"BR-TERM-014", "BR-CLAIM-001", "BR-VOICE-003", "BR-FMT-002"} <= rule_ids
 
 
-def test_clean_draft_is_approved(client):
+def test_clean_draft_awaits_human_approval(client):
     response = review(client, "Trueline helps customers. Terms apply.")
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "approved"
+    assert body["status"] == "pending_approval"
     assert body["findings"] == []
 
 
@@ -330,6 +330,67 @@ def test_invalid_pagination_is_rejected(client):
 def test_unknown_review_returns_404(client):
     assert client.get("/api/reviews/review_missing").status_code == 404
     assert client.get("/api/reviews/review_missing/history").status_code == 404
+    assert client.post(
+        "/api/reviews/review_missing/decision", json={"decision": "approved"}
+    ).status_code == 404
+
+
+def test_human_decision_updates_status_and_history(client):
+    created = review(client, "Trueline helps customers. Terms apply.")
+    review_id = created.json()["review_id"]
+
+    decided = client.post(
+        f"/api/reviews/{review_id}/decision",
+        json={
+            "decision": "approved",
+            "reviewer": "nimra@example.test",
+            "comment": "Checked the clean draft.",
+        },
+    )
+    assert decided.status_code == 200
+    body = decided.json()
+    assert body["status"] == "approved"
+    assert body["decision_event"]["event_type"] == "human_approval"
+    assert body["decision_event"]["reviewer"] == "nimra@example.test"
+    assert body["decision_event"]["comment"] == "Checked the clean draft."
+    assert body["decision_event"]["previous_status"] == "pending_approval"
+    assert body["decision_event"]["new_status"] == "approved"
+
+    history = client.get(f"/api/reviews/{review_id}/history")
+    assert [event["event_type"] for event in history.json()["events"]] == [
+        "review_created",
+        "review_completed",
+        "human_approval",
+    ]
+    assert history.json()["events"][-1]["decision"] == "approved"
+
+
+def test_rejection_and_repeated_decision_are_handled(client):
+    created = review(client, "Trueline helps customers. Terms apply.")
+    review_id = created.json()["review_id"]
+    rejected = client.post(
+        f"/api/reviews/{review_id}/decision",
+        json={"decision": "rejected", "comment": "Needs legal review."},
+    )
+    assert rejected.status_code == 200
+    assert rejected.json()["status"] == "rejected"
+    assert rejected.json()["decision_event"]["actor"] == "Unknown reviewer"
+
+    repeated = client.post(
+        f"/api/reviews/{review_id}/decision", json={"decision": "approved"}
+    )
+    assert repeated.status_code == 409
+    assert repeated.json()["error"]["code"] == "conflict"
+
+
+def test_invalid_decision_is_rejected(client):
+    created = review(client, "Trueline helps customers. Terms apply.")
+    response = client.post(
+        f"/api/reviews/{created.json()['review_id']}/decision",
+        json={"decision": "maybe"},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
 
 
 def test_unknown_brand_filter_returns_404(client):

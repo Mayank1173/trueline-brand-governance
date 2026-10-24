@@ -15,12 +15,89 @@ default, never replaces deterministic checks, and reports its execution status.
 - `GET /api/reviews` — paginated review list, optionally filtered by brand.
 - `GET /api/reviews/{review_id}` — persisted review and findings.
 - `GET /api/reviews/{review_id}/history` — audit events for a review.
+- `POST /api/reviews/{review_id}/decision` — persist one human approval or rejection.
 - `GET /api/brands` — brands available to the UI.
 - `GET /api/brands/{brand_id}` — one brand.
 - `GET /api/brands/{brand_id}/guidelines` — active rules and their source text.
 - `GET /api/brands/{brand_id}/facts` — approved facts and validity status.
 
 Swagger UI is available at `/docs`; ReDoc at `/redoc`.
+
+## Human decision API contract
+
+### Record a decision
+
+`POST /api/reviews/{review_id}/decision`
+
+Request body:
+
+```json
+{
+  "decision": "approved",
+  "reviewer": "nimra@example.com",
+  "comment": "Reviewed the findings and approved this draft."
+}
+```
+
+`decision` is required and must be `approved` or `rejected`. `reviewer` and
+`comment` are optional. There is no authentication or identity provider in the
+current backend, so `reviewer` is a caller-supplied label; when omitted, the
+audit event records `Unknown reviewer`.
+
+Successful responses return the updated review-compatible payload plus the
+persisted event:
+
+```json
+{
+  "review_id": "review_...",
+  "status": "approved",
+  "findings": [],
+  "ai_status": "skipped",
+  "ai_error": null,
+  "decision_event": {
+    "id": "event_...",
+    "event_type": "human_approval",
+    "actor_type": "human",
+    "actor": "nimra@example.com",
+    "action": "Reviewer recorded approved decision; status changed from pending_approval to approved.",
+    "comment": "Reviewed the findings and approved this draft.",
+    "previous_status": "pending_approval",
+    "new_status": "approved",
+    "decision": "approved",
+    "reviewer": "nimra@example.com",
+    "at": "2026-10-24T12:00:00Z"
+  }
+}
+```
+
+Errors use the standard `{ "error": { "code", "message" } }` envelope:
+
+- `404 not_found` — the review ID does not exist.
+- `422 validation_error` — malformed JSON, missing `decision`, an invalid
+  decision, or an overlong reviewer/comment.
+- `409 conflict` — the review has already been approved or rejected, or is not
+  in a human-actionable state.
+- `503 database_unavailable` — the status and event were not saved.
+
+Automated review statuses are `pending_approval` (clean automated run),
+`changes_requested` (findings without an explicit human-review flag), or
+`needs_human_review` (a required human review or incomplete AI run). All are
+eligible for one explicit decision. `approved` and `rejected` are terminal
+human outcomes; repeated decisions are rejected with `409`. AI statuses such
+as `success`, `skipped`, `not_configured`, `unavailable`, `timeout`, and
+`degraded` remain independent metadata and never approve a review by
+themselves. Findings, citations, and suggested fixes are retained when a
+decision is recorded.
+
+### History integration
+
+`GET /api/reviews/{review_id}/history` returns the original automated events
+and any persisted human event in sequence order. Human events use
+`event_type: "human_approval"` or `"human_rejection"` and include `decision`,
+`previous_status`, `new_status`, `reviewer`, `comment`, `actor`, and `at`.
+System events retain their existing fields; the new decision fields are null
+for those events. No historical human event is generated for decisions that
+never occurred.
 
 ## Architecture
 
@@ -56,7 +133,7 @@ Swagger UI is available at `/docs`; ReDoc at `/redoc`.
    on overlap, and validate every citation against the loaded source rows.
 6. Derive status: `needs_human_review` if any finding needs a human or AI did
    not complete cleanly, otherwise `changes_requested` if there are findings,
-   otherwise `approved`.
+   otherwise `pending_approval`. Automated review runs never set `approved`.
 7. Insert review, findings, AI status/error, and two audit events in one
    transaction.
 8. Return the response only after the commit succeeds. A failed commit returns
@@ -117,7 +194,8 @@ Useful demo inputs:
 | more than 1,200 characters | length limit `BR-LIMIT-001` |
 
 A draft with none of the demo violations and containing `Terms apply.` returns
-`status: "approved"` with an empty `findings` array.
+`status: "pending_approval"` with an empty `findings` array. A human must then
+record an explicit approval.
 
 ### Run tests
 
@@ -246,7 +324,9 @@ contract use different names. The backend returns a compatible superset:
 - Top-level `ai_status` and `ai_error` are additive on submit, summary, and
   detail responses. Both may be `null` for rows created before migration 0003.
 - Severity is `low | medium | high`.
-- Status is `approved | changes_requested | needs_human_review`.
+- Status is `pending_approval | approved | rejected | changes_requested |
+  needs_human_review`; only the decision endpoint produces `approved` or
+  `rejected`.
 - Missing required phrases and length violations use `matched_text: ""` with
   `start: null`, `end: null`, matching the frontend's append/no-offset handling.
 - Offsets are zero-based, end-exclusive **UTF-16 code units**, because the

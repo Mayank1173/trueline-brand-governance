@@ -95,6 +95,8 @@ def review_detail(review: Review) -> ReviewDetail:
 
 
 def review_event_response(event: ReviewEvent) -> ReviewEventResponse:
+    metadata = event.event_metadata or {}
+    decision = metadata.get("decision")
     return ReviewEventResponse(
         id=event.id,
         event_type=event.event_type,
@@ -102,6 +104,10 @@ def review_event_response(event: ReviewEvent) -> ReviewEventResponse:
         actor=event.actor,
         action=event.action,
         comment=event.comment,
+        previous_status=metadata.get("previous_status"),
+        new_status=metadata.get("new_status"),
+        decision=decision,
+        reviewer=event.actor if event.actor_type == "human" else None,
         at=_as_utc(event.created_at),
     )
 

@@ -15,7 +15,7 @@ from .api import brands, health, reviews
 from .citations import CitationValidationError
 from .config import Settings, get_settings
 from .database import Database
-from .errors import NotFoundError, PersistenceError
+from .errors import ConflictError, NotFoundError, PersistenceError
 from .rule_engine import RuleEngineError
 from .seed import seed_demo_data
 
@@ -150,6 +150,10 @@ def _register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(NotFoundError)
     async def not_found_handler(_request: Request, exc: NotFoundError):
         return _error_response(404, "not_found", str(exc))
+
+    @app.exception_handler(ConflictError)
+    async def conflict_handler(_request: Request, exc: ConflictError):
+        return _error_response(409, "conflict", str(exc))
 
     @app.exception_handler(PersistenceError)
     async def persistence_handler(_request: Request, exc: PersistenceError):

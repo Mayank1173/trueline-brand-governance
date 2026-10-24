@@ -186,6 +186,27 @@ def test_ai_only_guideline_run_persists_grounded_citation(database):
     assert finding.end_offset == 13
 
 
+def test_ai_success_never_automatically_approves_clean_review(database):
+    settings, db = database
+    with db.session_factory() as session:
+        _mark_guideline(session, "GL-B1-VOICE-003", "ai")
+
+    service = _service(settings, FakeProvider(findings=[]), ai_enabled=True)
+    with db.session_factory() as session:
+        review = service.submit(
+            session,
+            ReviewRequest(
+                brand_id="brand_001",
+                draft_text="Trueline helps customers. Terms apply.",
+                purpose="marketing",
+            ),
+        )
+        assert review.findings == []
+
+    assert review.ai_status == AI_STATUS_SUCCESS
+    assert review.status == "pending_approval"
+
+
 def test_invalid_ai_citation_rejects_the_whole_finding(database):
     settings, db = database
     with db.session_factory() as session:
