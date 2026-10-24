@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import ActivityLog from "@/components/ActivityLog";
 import RevisionHistory from "@/components/RevisionHistory";
 import SampleDataNotice from "@/components/SampleDataNotice";
-import StatusBadge from "@/components/StatusBadge";
+import DisplayStatus from "@/components/DisplayStatus";
 import { apiGet, fetchReviews, isLive, type ReviewSummary } from "@/lib/api";
 import { formatUtc } from "@/lib/format";
 import { SAMPLE_DRAFTS, SAMPLE_REVISIONS } from "@/lib/mock/sampleData";
@@ -134,7 +134,7 @@ function LiveHistory() {
 
       {current && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm">
-          <StatusBadge status={current.status} />
+          <DisplayStatus status={current.status} findingCount={current.finding_count} />
           <span>
             {current.finding_count} finding(s), {current.requires_human_review_count} need human review
           </span>

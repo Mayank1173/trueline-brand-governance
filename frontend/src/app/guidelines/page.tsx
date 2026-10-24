@@ -52,9 +52,12 @@ function Live({ data }: { data: LiveData }) {
   return (
     <>
       <p className="text-sm text-muted">
-        Rules for <span className="font-semibold text-ink">{data.brandName}</span>. Read-only. Demo data is
-        illustrative, not official brand policy.
+        Rules for <span className="font-semibold text-ink">{data.brandName}</span>. Read-only.
       </p>
+      <div role="note" className="rounded-xl border border-line bg-surface-2 p-3 text-sm">
+        <strong>Illustrative demo data.</strong> These brands, rules and facts are fictional and are not
+        official brand policy.
+      </div>
 
       {[...groups.entries()].map(([cat, rules]) => (
         <section key={cat} aria-label={CATEGORY_LABEL[cat] ?? cat} className="rounded-2xl border border-line bg-surface p-5">
@@ -89,8 +92,10 @@ function Live({ data }: { data: LiveData }) {
                   <span>{f.statement}</span>
                 </div>
                 <p className="mt-1 text-xs text-muted">
-                  Source: {f.source} · {f.valid_until ? `Valid until ${f.valid_until}` : "No expiry set"} ·{" "}
-                  {f.is_current ? "Current" : "Not current"}
+                  Source: {f.source} · {f.valid_until ? `Valid until ${f.valid_until}` : "No expiry set"}
+                </p>
+                <p className={`mt-1 text-xs font-semibold ${f.is_current ? "text-muted" : "text-amber"}`}>
+                  {f.is_current ? "✓ Current" : "⚠ Not current: expired, not yet valid, or superseded. Do not rely on it."}
                 </p>
               </li>
             ))}

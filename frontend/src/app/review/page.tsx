@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
 import AiStatusNotice from "@/components/AiStatusNotice";
+import DisplayStatus from "@/components/DisplayStatus";
 import DraftEditor from "@/components/DraftEditor";
 import FindingCard, { type FindingState } from "@/components/FindingCard";
-import StatusBadge from "@/components/StatusBadge";
 import { brands, submitReview } from "@/lib/reviewService";
 import type { Finding, ReviewResponse } from "@/lib/types";
 import { applySuggestedFix } from "@/lib/applyFix";
@@ -168,7 +168,7 @@ export default function ReviewPage() {
           {!loading && result && (
             <div className="mt-4 space-y-4">
               <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm">
-                <StatusBadge status={result.status} />
+                <DisplayStatus status={result.status} findingCount={result.findings.length} />
                 <span>{result.findings.length} finding(s), {openCount} still open</span>
                 <span className="text-xs text-muted">Review ID: {result.review_id}</span>
               </div>
@@ -191,9 +191,13 @@ export default function ReviewPage() {
               )}
 
               {result.findings.length === 0 ? (
-                <p className="rounded-2xl border border-line bg-surface p-5 text-sm">
-                  No issues found by the automated check. A human reviewer still makes the final call.
-                </p>
+                <div className="rounded-2xl border border-line bg-surface p-5 text-sm">
+                  <p className="font-semibold">◷ Awaiting Human Approval</p>
+                  <p className="mt-1 text-muted">
+                    The automated check found no issues. That is not an approval. A human reviewer must approve
+                    this draft before it is published.
+                  </p>
+                </div>
               ) : (
                 result.findings.map((f) => (
                   <FindingCard
