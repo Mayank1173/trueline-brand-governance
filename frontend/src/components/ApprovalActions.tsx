@@ -1,19 +1,31 @@
 "use client";
 import { useState } from "react";
+import ConfirmDialog from "./ConfirmDialog";
+import type { Decision } from "@/lib/decisionService";
 
-export type Decision = "approved" | "changes_requested" | "rejected";
+export type { Decision };
+
+const LABEL: Record<Decision, string> = {
+  approved: "Approve",
+  changes_requested: "Request changes",
+  rejected: "Reject",
+};
 
 interface Props {
   canReview: boolean;
-  onDecide: (decision: Decision, comment: string) => void;
+  onDecide: (decision: Decision, comment: string) => Promise<void>;
+  isMock?: boolean;
 }
 
 const primary = "rounded-full bg-maroon px-4 py-2 text-sm font-semibold text-white hover:bg-maroon-hover";
 const secondary = "rounded-full border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-surface-2";
 
-export default function ApprovalActions({ canReview, onDecide }: Props) {
+export default function ApprovalActions({ canReview, onDecide, isMock }: Props) {
   const [comment, setComment] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [pending, setPending] = useState<Decision | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!canReview) {
     return (
@@ -23,14 +35,34 @@ export default function ApprovalActions({ canReview, onDecide }: Props) {
     );
   }
 
-  function decide(d: Decision) {
+  function ask(d: Decision) {
     if (d !== "approved" && !comment.trim()) {
-      setError("Add a comment explaining your decision so the author knows what to do next.");
+      setValidationError("Add a comment explaining your decision so the author knows what to do next.");
       return;
     }
-    setError(null);
-    onDecide(d, comment.trim());
-    setComment("");
+    setValidationError(null);
+    setSubmitError(null);
+    setPending(d);
+  }
+
+  async function confirm() {
+    if (!pending) return;
+    setBusy(true);
+    setSubmitError(null);
+    try {
+      await onDecide(pending, comment.trim());
+      setComment("");
+      setPending(null);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function cancel() {
+    setPending(null);
+    setSubmitError(null);
   }
 
   return (
@@ -47,16 +79,39 @@ export default function ApprovalActions({ canReview, onDecide }: Props) {
           className="mt-1 w-full rounded-xl border border-line bg-surface p-2.5 text-sm text-ink placeholder:text-muted"
         />
       </div>
-      {error && (
+
+      {validationError && (
         <div role="alert" className="rounded-xl border border-maroon-soft bg-maroon/25 p-3 text-sm">
-          {error}
+          {validationError}
         </div>
       )}
+
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => decide("approved")} className={primary}>Approve</button>
-        <button type="button" onClick={() => decide("changes_requested")} className={secondary}>Request changes</button>
-        <button type="button" onClick={() => decide("rejected")} className={secondary}>Reject</button>
+        <button type="button" onClick={() => ask("approved")} className={primary}>Approve</button>
+        <button type="button" onClick={() => ask("changes_requested")} className={secondary}>Request changes</button>
+        <button type="button" onClick={() => ask("rejected")} className={secondary}>Reject</button>
       </div>
+
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending ? `${LABEL[pending]}?` : ""}
+        confirmLabel={pending ? `Yes, ${LABEL[pending].toLowerCase()}` : "Confirm"}
+        busy={busy}
+        error={submitError}
+        onConfirm={confirm}
+        onCancel={cancel}
+      >
+        <p>
+          You’re about to <strong className="text-ink">{pending ? LABEL[pending].toLowerCase() : ""}</strong> this
+          draft as a human reviewer.
+        </p>
+        {comment.trim() && <p className="mt-2">Your comment: “{comment.trim()}”</p>}
+        {isMock && (
+          <p className="mt-3 rounded-lg border border-maroon-soft/60 p-2 text-xs">
+            <strong>Mock decision.</strong> It isn’t sent to the backend or saved.
+          </p>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }

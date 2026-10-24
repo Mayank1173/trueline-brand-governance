@@ -9,14 +9,17 @@ import StatusBadge from "@/components/StatusBadge";
 import { fetchReviews, isLive } from "@/lib/api";
 import { formatUtc } from "@/lib/format";
 import { SAMPLE_DRAFTS } from "@/lib/mock/sampleData";
+import { findingsText, shortReviewId } from "@/lib/reviewLabel";
 import type { ReviewStatus } from "@/lib/types";
 
 interface Row {
   id: string;
   title: string;
+  subtitle?: string;
   status: ReviewStatus;
   findingCount: number;
   meta: string;
+  fullId?: string;
 }
 
 const SAMPLE_STATUSES: ReviewStatus[] = ["draft", "in_review", "changes_requested", "approved"];
@@ -45,10 +48,12 @@ export default function DashboardPage() {
         setRows(
           items.map((r) => ({
             id: r.review_id,
-            title: r.purpose || "Review",
+            title: `Review #${shortReviewId(r.review_id)}`,
+            subtitle: r.purpose ? `Purpose: ${r.purpose}` : undefined,
             status: r.status,
             findingCount: r.finding_count,
-            meta: `${r.finding_count} finding(s), ${r.requires_human_review_count} need human review · Updated ${formatUtc(r.updated_at)} · ${r.review_id}`,
+            meta: `${findingsText(r.finding_count, r.requires_human_review_count)} · Updated ${formatUtc(r.updated_at)}`,
+            fullId: r.review_id,
           }))
         );
         setUsingSample(false);
@@ -151,7 +156,9 @@ export default function DashboardPage() {
                       <p className="font-semibold">{r.title}</p>
                       <DisplayStatus status={r.status} findingCount={usingSample ? 1 : r.findingCount} />
                     </div>
-                    <p className="mt-2 break-all text-xs text-muted">{r.meta}</p>
+                    {r.subtitle && <p className="mt-1 text-sm text-muted">{r.subtitle}</p>}
+                    <p className="mt-2 text-xs text-muted">{r.meta}</p>
+                    {r.fullId && <p className="mt-1 break-all text-xs text-muted">ID: {r.fullId}</p>}
                   </li>
                 ))}
               </ul>

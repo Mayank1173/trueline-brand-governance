@@ -7,6 +7,7 @@ import DisplayStatus from "@/components/DisplayStatus";
 import { apiGet, fetchReviews, isLive, type ReviewSummary } from "@/lib/api";
 import { formatUtc } from "@/lib/format";
 import { SAMPLE_DRAFTS, SAMPLE_REVISIONS } from "@/lib/mock/sampleData";
+import { findingsText, shortReviewId, statusText } from "@/lib/reviewLabel";
 import type { ActivityEvent, ActorType } from "@/lib/workflowTypes";
 
 interface Loaded {
@@ -32,6 +33,23 @@ function toEvents(raw: unknown): ActivityEvent[] {
       at: typeof e.at === "string" ? e.at : "",
     };
   });
+}
+
+// Newest first. ISO timestamps sort correctly as strings; events without a time go last.
+function newestFirst(events: ActivityEvent[]): ActivityEvent[] {
+  return [...events].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+}
+
+function RetryButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full border border-line px-4 py-1.5 text-sm font-medium hover:bg-surface-2"
+    >
+      Try again
+    </button>
+  );
 }
 
 function LiveHistory() {
@@ -86,13 +104,7 @@ function LiveHistory() {
       <div role="alert" className="rounded-xl border border-line bg-surface p-3 text-sm">
         <strong>Couldn’t load reviews.</strong> {listError}
         <div className="mt-2">
-          <button
-            type="button"
-            onClick={retry}
-            className="rounded-full border border-line px-4 py-1.5 text-sm font-medium hover:bg-surface-2"
-          >
-            Try again
-          </button>
+          <RetryButton onClick={retry} />
         </div>
       </div>
     );
@@ -114,6 +126,10 @@ function LiveHistory() {
     );
   }
 
+  const events = loaded && !loaded.error ? newestFirst(loaded.events) : [];
+  const reviewerEvents = events.filter((e) => e.actor_type === "human");
+  const statusEvents = events.filter((e) => e.actor_type !== "human");
+
   return (
     <div className="space-y-4">
       <div>
@@ -126,18 +142,19 @@ function LiveHistory() {
         >
           {reviews.map((r) => (
             <option key={r.review_id} value={r.review_id}>
-              {formatUtc(r.created_at)} · {r.status} · {r.review_id}
+              {formatUtc(r.created_at)} · {statusText(r.status, r.finding_count)} · #{shortReviewId(r.review_id)}
             </option>
           ))}
         </select>
       </div>
 
       {current && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm">
-          <DisplayStatus status={current.status} findingCount={current.finding_count} />
-          <span>
-            {current.finding_count} finding(s), {current.requires_human_review_count} need human review
-          </span>
+        <div className="space-y-2 rounded-2xl border border-line bg-surface p-4 text-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <DisplayStatus status={current.status} findingCount={current.finding_count} />
+            <span>{findingsText(current.finding_count, current.requires_human_review_count)}</span>
+          </div>
+          <p className="break-all text-xs text-muted">Review ID: {current.review_id}</p>
         </div>
       )}
 
@@ -151,18 +168,36 @@ function LiveHistory() {
         <div role="alert" className="rounded-xl border border-line bg-surface p-3 text-sm">
           <strong>Couldn’t load the audit trail.</strong> {loaded.error}
           <div className="mt-2">
-            <button
-              type="button"
-              onClick={retry}
-              className="rounded-full border border-line px-4 py-1.5 text-sm font-medium hover:bg-surface-2"
-            >
-              Try again
-            </button>
+            <RetryButton onClick={retry} />
           </div>
         </div>
       )}
 
-      {!loading && loaded && !loaded.error && <ActivityLog events={loaded.events} />}
+      {!loading && loaded && !loaded.error && (
+        <>
+          <section aria-labelledby="status-events-heading" className="rounded-2xl border border-line bg-surface p-5">
+            <h2 id="status-events-heading" className="text-lg font-semibold">Status and system events</h2>
+            <p className="mt-1 text-xs text-muted">Automated events recorded by the backend. Not human decisions.</p>
+            <div className="mt-3">
+              <ActivityLog events={statusEvents} />
+            </div>
+          </section>
+
+          <section aria-labelledby="reviewer-heading" className="rounded-2xl border border-line bg-surface p-5">
+            <h2 id="reviewer-heading" className="text-lg font-semibold">Reviewer decisions</h2>
+            <div className="mt-3">
+              {reviewerEvents.length === 0 ? (
+                <p className="text-sm text-muted">
+                  No reviewer decisions recorded yet. Decisions will appear here once reviewers can approve or
+                  reject.
+                </p>
+              ) : (
+                <ActivityLog events={reviewerEvents} />
+              )}
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }
