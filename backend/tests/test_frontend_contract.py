@@ -18,6 +18,7 @@ REQUIRED_FINDING_FIELDS = {
     "suggested_fix",
     "confidence",
     "requires_human_review",
+    "ai_label",
 }
 
 
@@ -37,6 +38,7 @@ def test_response_shape_is_compatible_with_frontend(client, demo_payload):
         assert finding["id"] == finding["finding_id"]
         assert finding["severity"] in FRONTEND_SEVERITIES
         assert isinstance(finding["requires_human_review"], bool)
+        assert finding["ai_label"] is None
         assert isinstance(finding["confidence"], float)
         assert finding["suggested_fix"] is None or isinstance(
             finding["suggested_fix"], str

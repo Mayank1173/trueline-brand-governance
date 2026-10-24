@@ -5,9 +5,13 @@ The public response is a compatible superset of the frontend contract in
 
 * ``FindingResponse.id`` is kept for the existing frontend.
 * ``FindingResponse.finding_id`` is also returned for the backend/leader spec.
+* ``FindingResponse.ai_label`` is the nullable original AI label; deterministic
+  findings leave it ``null`` while retaining ``category`` and ``severity``.
 * ``CitationOut`` contains both the frontend fields (``rule_id``, ``source``,
   ``excerpt``) and the grounded source metadata (``source_type``,
   ``source_id``, ``source_version``, ``quoted_text``, ``valid_until``).
+  ``source_version`` is ``null`` when the approved source has no recorded
+  version; the backend never invents one.
 """
 
 from __future__ import annotations
@@ -16,6 +20,8 @@ from datetime import date, datetime
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from .ai_labels import AILabel
 
 
 class Severity(str, Enum):
@@ -92,7 +98,7 @@ class CitationOut(BaseModel):
     # Grounded source metadata (leader/rule-engine contract)
     source_type: SourceType
     source_id: str
-    source_version: str
+    source_version: str | None
     quoted_text: str
     valid_until: date | None = None
 
@@ -111,6 +117,7 @@ class FindingResponse(BaseModel):
     suggested_fix: str | None = None
     confidence: float = Field(ge=0.0, le=1.0)
     requires_human_review: bool
+    ai_label: AILabel | None = None
 
 
 class ReviewResponse(BaseModel):
@@ -171,7 +178,7 @@ class GuidelineResponse(BaseModel):
     rule_id: str
     title: str
     section: str | None = None
-    version: str
+    version: str | None
     content: str
     category: str
     severity: Severity
@@ -186,7 +193,7 @@ class ApprovedFactResponse(BaseModel):
     source_id: str
     statement: str
     source: str
-    source_version: str
+    source_version: str | None
     valid_from: date | None = None
     valid_until: date | None = None
     is_current: bool

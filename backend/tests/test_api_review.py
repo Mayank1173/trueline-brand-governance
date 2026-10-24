@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from datetime import date
+
+from app.models import ApprovedFact, Guideline
+
 
 def review(
     client, text: str, *, brand_id: str = "brand_001", purpose: str = "marketing"
@@ -61,6 +65,7 @@ def test_valid_review_returns_grounded_findings(client, demo_payload):
         assert finding["id"] == finding["finding_id"]
         assert finding["severity"] in {"low", "medium", "high"}
         assert 0.0 <= finding["confidence"] <= 1.0
+        assert finding["ai_label"] is None
         if finding["matched_text"]:
             start, end = finding["start"], finding["end"]
             assert demo_payload["draft_text"][start:end] == finding["matched_text"]
@@ -133,6 +138,7 @@ def test_expired_fact_is_flagged_and_cites_approved_fact(client):
     assert finding["matched_text"] == "Free returns within 30 days."
     assert finding["citation"]["source_type"] == "approved_fact"
     assert finding["citation"]["source_id"].startswith("FACT-B1-")
+    assert finding["citation"]["valid_until"] == "2020-01-01"
     assert finding["requires_human_review"] is True
 
 
@@ -140,6 +146,74 @@ def test_current_approved_fact_is_not_flagged(client):
     response = review(client, "Free shipping on orders over $50. Terms apply.")
     assert response.status_code == 200
     assert response.json()["findings"] == []
+
+
+def test_unversioned_guideline_returns_null_source_version(client):
+    with client.app.state.db.session_factory() as session:
+        session.add(
+            Guideline(
+                id="GL-B1-NULL-001",
+                brand_id="brand_001",
+                rule_id="BR-NULL-001",
+                title="Unversioned illustration",
+                section="9.1",
+                version=None,
+                content="Avoid 'legacyword' in customer-facing copy.",
+                category="banned_term",
+                severity="medium",
+                match_type="term",
+                config_json={"patterns": ["legacyword"], "word_boundary": True},
+                explanation="The draft uses a legacy term.",
+                suggested_fix="current word",
+                confidence=1.0,
+                requires_human_review=False,
+                is_active=True,
+            )
+        )
+        session.commit()
+
+    response = review(client, "legacyword. Terms apply.")
+    assert response.status_code == 200
+    finding = next(
+        item for item in response.json()["findings"] if item["rule_id"] == "BR-NULL-001"
+    )
+    assert finding["citation"]["source_version"] is None
+    assert finding["citation"]["valid_until"] is None
+
+    guidelines = client.get("/api/brands/brand_001/guidelines").json()["guidelines"]
+    source = next(item for item in guidelines if item["source_id"] == "GL-B1-NULL-001")
+    assert source["version"] is None
+
+
+def test_expired_unversioned_fact_preserves_null_version_and_expiry(client):
+    with client.app.state.db.session_factory() as session:
+        session.add(
+            ApprovedFact(
+                id="FACT-B1-NULL-001",
+                brand_id="brand_001",
+                statement="Beta access ends soon.",
+                source_label="Unversioned illustration",
+                source_version=None,
+                valid_from=date(2000, 1, 1),
+                valid_until=date(2020, 1, 1),
+                is_active=True,
+            )
+        )
+        session.commit()
+
+    response = review(client, "Beta access ends soon. Terms apply.")
+    assert response.status_code == 200
+    finding = next(
+        item
+        for item in response.json()["findings"]
+        if item["category"] == "fact_metadata"
+    )
+    assert finding["citation"]["source_version"] is None
+    assert finding["citation"]["valid_until"] == "2020-01-01"
+
+    facts = client.get("/api/brands/brand_001/facts").json()["approved_facts"]
+    source = next(item for item in facts if item["source_id"] == "FACT-B1-NULL-001")
+    assert source["source_version"] is None
 
 
 def test_brand_scoping_uses_that_brands_sources(client):

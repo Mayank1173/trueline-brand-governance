@@ -9,6 +9,7 @@ from uuid import uuid4
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from .ai_labels import AILabel
 from .citations import validate_finding_citations
 from .config import Settings
 from .errors import NotFoundError, PersistenceError
@@ -95,6 +96,9 @@ class ReviewService:
                     category=draft.category,
                     severity=draft.severity,
                     explanation=draft.explanation,
+                    ai_label=AILabel(draft.ai_label).value
+                    if draft.ai_label is not None
+                    else None,
                     citation_source_type=citation.source_type if citation else None,
                     citation_source_id=citation.source_id if citation else None,
                     citation_source_version=citation.source_version

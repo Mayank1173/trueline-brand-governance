@@ -20,7 +20,8 @@ def test_migrations_upgrade_and_downgrade(tmp_path, monkeypatch):
     command.upgrade(config, "head")
 
     engine = create_engine(url)
-    tables = set(inspect(engine).get_table_names())
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
     assert {
         "brands",
         "guidelines",
@@ -30,6 +31,21 @@ def test_migrations_upgrade_and_downgrade(tmp_path, monkeypatch):
         "review_events",
         "alembic_version",
     } <= tables
+
+    guideline_columns = {
+        column["name"]: column for column in inspector.get_columns("guidelines")
+    }
+    assert guideline_columns["version"]["nullable"] is True
+
+    fact_columns = {
+        column["name"]: column for column in inspector.get_columns("approved_facts")
+    }
+    assert fact_columns["source_version"]["nullable"] is True
+
+    finding_columns = {
+        column["name"]: column for column in inspector.get_columns("review_findings")
+    }
+    assert finding_columns["ai_label"]["nullable"] is True
     engine.dispose()
 
     command.downgrade(config, "base")

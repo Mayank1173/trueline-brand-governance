@@ -32,10 +32,12 @@ Swagger UI is available at `/docs`; ReDoc at `/redoc`.
 | `app/repositories.py` | Queries and model-to-engine adapters |
 | `app/rule_engine/` | Independent deterministic engine with no FastAPI/DB imports |
 | `app/citations.py` | Strict source/version/quote validation |
+| `app/evaluation.py` | Pure helpers for precise-finding vs sentence-annotation matching |
+| `app/ai_labels.py` | Allowed original AI label values; no AI client |
 | `app/services.py` | Review orchestration and transaction handling |
 | `app/seed.py`, `app/seed_data.py` | Clearly labelled illustrative demo data |
 | `app/ai.py` | Disabled future AI boundary; no provider is wired in |
-| `migrations/` | Alembic migration for the initial schema |
+| `migrations/` | Alembic revisions for the review schema |
 
 ### Review flow
 
@@ -152,10 +154,10 @@ has been verified in this workspace.** PostgreSQL has not been run or validated.
 ### Tables
 
 - `brands`
-- `guidelines` (rule ID, source ID, version, exact quoted source text, matcher config)
-- `approved_facts` (statement, source, version, validity window)
+- `guidelines` (rule ID, source ID, nullable version, exact quoted source text, matcher config)
+- `approved_facts` (statement, source, nullable version, validity window)
 - `reviews` (draft, purpose, status, ruleset/engine versions, evaluation date)
-- `review_findings` (span, category, severity, explanation, citation fields)
+- `review_findings` (span, category, severity, explanation, nullable AI label, citation fields)
 - `review_events` (ordered audit trail)
 
 ## Configuration
@@ -200,7 +202,11 @@ contract use different names. The backend returns a compatible superset:
   and equal.
 - `CitationOut` includes `{rule_id, source, excerpt}` for the frontend and
   `{source_type, source_id, source_version, quoted_text, valid_until}` for
-  grounded citations.
+  grounded citations. `source_version` is `null` when the source has no recorded
+  version; it is never fabricated. `valid_until` is `YYYY-MM-DD` or `null`.
+- `FindingResponse.ai_label` is a separate nullable original AI label. Valid
+  non-null values are `VIOLATION`, `NEEDS_HUMAN_JUDGEMENT`, `UNSUPPORTED`,
+  `CONTRADICTED`, and `OUTDATED`. Deterministic findings leave it `null`.
 - Severity is `low | medium | high`.
 - Status is `approved | changes_requested | needs_human_review`.
 - Missing required phrases and length violations use `matched_text: ""` with
@@ -208,6 +214,10 @@ contract use different names. The backend returns a compatible superset:
 - Offsets are zero-based, end-exclusive **UTF-16 code units**, because the
   frontend slices JavaScript strings. This only differs from Python character
   indices for non-BMP characters such as emoji.
+- Evaluation does not widen findings to sentences. `app/evaluation.py` matches a
+  precise finding to a sentence annotation only on positive overlap; no-span
+  findings are matched at draft/rule level instead. See
+  `../docs/evaluation-matching.md`.
 
 These choices are provisional where the team has not formally confirmed the
 proposed rule-engine schema. They are documented here rather than silently
@@ -232,6 +242,17 @@ are sorted deterministically by offset, end, and rule ID.
 The engine intentionally does **not** claim to verify arbitrary factual truth.
 It detects configured claim language and exact expired-fact statements. Human
 review remains required where indicated.
+
+### AI label boundary
+
+`ai_label` is the original label an AI system may have assigned; it is not a
+backend decision. The deterministic engine always leaves it `null`, and this
+backend contains no AI client. A future adapter may set
+`FindingDraft.ai_label`; `ReviewService` validates and persists it, and both the
+submit and detail responses expose it. The adapter must not create citations or
+approved facts and must not overwrite the deterministic `category`, `severity`,
+`requires_human_review`, or review status. Non-null values are validated against
+the five allowed labels before persistence and again when building the response.
 
 ## Demo data warning
 

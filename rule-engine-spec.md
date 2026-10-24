@@ -31,13 +31,14 @@ Every rule type below produces findings in this structure. Field names are propo
 | `category` | string (enum) | yes | One of: `banned_term`, `preferred_term`, `required_phrase`, `product_name`, `formatting`, `missing_content`, `approved_fact`, `fact_metadata`, `length_limit`. |
 | `severity` | string (enum) | yes | Proposed: `critical`, `high`, `medium`, `low`, `info`. Final values pending confirmation. |
 | `matched_text` | string \| null | yes | The exact text that triggered the finding. `null` for "missing content" findings. |
-| `start_offset` | int \| null | yes | Character offset where `matched_text` begins in the draft. `null` if not applicable. |
-| `end_offset` | int \| null | yes | Character offset where `matched_text` ends (exclusive). `null` if not applicable. |
+| `start_offset` | int \| null | yes | Zero-based, end-exclusive UTF-16 offset where `matched_text` begins in the draft. `null` if not applicable. |
+| `end_offset` | int \| null | yes | End-exclusive UTF-16 offset where `matched_text` ends. `null` if not applicable. |
 | `explanation` | string | yes | Plain-language explanation of why this was flagged. |
 | `source_reference` | object \| null | yes | The guideline or fact that supports the finding. See §3. |
 | `suggested_fix` | string \| null | yes | A proposed correction, if one can be generated safely. `null` if the engine cannot suggest a fix. |
 | `confidence` | float (0.0–1.0) | yes | For deterministic rules this is `1.0` when the match is exact and unambiguous; lower when a rule is heuristic. Must be documented per rule. |
 | `requires_human_review` | bool | yes | `true` when the rule cannot fully decide the issue and a human must confirm. |
+| `ai_label` | string \| null | yes | Original AI label, independent of `category`, `severity`, and `requires_human_review`. One of `VIOLATION`, `NEEDS_HUMAN_JUDGEMENT`, `UNSUPPORTED`, `CONTRADICTED`, `OUTDATED`; `null` for deterministic-only findings. |
 
 ### 3. `source_reference` sub-object
 
@@ -45,7 +46,12 @@ Every rule type below produces findings in this structure. Field names are propo
 {
   "source_type": "guideline | approved_fact | brand_config",
   "source_id": "string",
-  "source_version": "string",
+  "source_version": "string | null",
   "quoted_text": "string | null",
-  "valid_until": "ISO-8601 date | null"
+  "valid_until": "ISO-8601 date (YYYY-MM-DD) | null"
 }
+```
+
+`source_version` is `null` when the approved source has no recorded version. The
+backend must not invent a version, substitute an empty string, or accept a
+citation version that disagrees with the loaded source.

@@ -3,8 +3,9 @@
 Every finding citation is checked against rows that were actually loaded for
 the requested brand. A citation is rejected when its source does not exist,
 belongs to another brand, has the wrong version, or quotes text that is not in
-the source. This is deliberately strict: an invalid citation is an engine bug,
-not something to display to a user.
+the source. A missing version is allowed only when the approved source also has
+no version; the validator never invents or substitutes one. This is deliberately
+strict: an invalid citation is an engine bug, not something to display to a user.
 """
 
 from __future__ import annotations
@@ -83,13 +84,19 @@ def validate_finding_citations(
 
 def _check_version_and_quote(
     *,
-    source_version: str,
+    source_version: str | None,
     source_content: str,
-    quoted_version: str,
+    quoted_version: str | None,
     quoted_text: str,
     label: str,
 ) -> None:
-    if not source_version or quoted_version != source_version:
+    if source_version is None:
+        if quoted_version is not None:
+            raise CitationValidationError(
+                f"Citation claims version {quoted_version!r} but {label} has no "
+                "recorded version"
+            )
+    elif quoted_version != source_version:
         raise CitationValidationError(
             f"Citation version {quoted_version!r} does not match {label} "
             f"version {source_version!r}"

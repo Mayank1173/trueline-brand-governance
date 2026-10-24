@@ -36,10 +36,11 @@ It separates **automated metrics** (calculated by a script from labeled data) fr
 Two findings match when **all** of the following hold:
 
 1. Same `rule_id`.
-2. Overlapping text span: the predicted `[start_offset, end_offset)` overlaps the expected span, **or** both spans are `null` (missing-content findings).
-3. Same `category`.
+2. Same `category`.
+3. For a sentence-level annotation, a **positive overlap** between the predicted `[start_offset, end_offset)` and the annotated span. Missing, zero-length, adjacent, and disjoint spans do not match. Findings keep their precise word/pattern span; they are not widened to sentences.
+4. Missing-content and length findings have no span. Match them at **draft/rule level** when both the prediction and annotation are spanless, rather than aligning them to an arbitrary sentence.
 
-If a draft has multiple identical rules triggering at different positions, matches are assigned **one-to-one** (each predicted finding can match at most one expected finding, and vice versa). The matching procedure must be implemented as a script and stored with the results so it is reproducible.
+If a draft has multiple identical rules triggering at different positions, matches are assigned **one-to-one** (each predicted finding can match at most one expected finding, and vice versa). The matching procedure must be implemented as a script and stored with the results so it is reproducible. The backend helper implementation is documented in [`docs/evaluation-matching.md`](../../docs/evaluation-matching.md).
 
 **This definition must be agreed with Mayank and Kushal before scores are calculated.** If the definition changes, old scores are invalid.
 
@@ -107,7 +108,7 @@ This equals `1 − Precision`. Choose one and state which was used. **Recommend 
 - **Formula:**
 
 
-- **"Valid"** means: `source_reference` is non-null, `source_id` exists in the loaded guideline/fact library, `source_version` is present, and (for facts) the fact was valid on the run's `evaluation_date`.
+- **"Valid"** means: `source_reference` is non-null, `source_id` exists in the loaded guideline/fact library, `quoted_text` is present in that source, `source_version` matches the loaded source (including both being absent), and (for facts) the fact was valid on the run's `evaluation_date`.
 - **Zero-denominator rule:** If there are no findings, report `N/A`.
 - **Also report separately:** the count of findings rejected for a null or fabricated `source_reference` (this should be zero; if not, it is a critical defect).
 - **Current value:** **PENDING**

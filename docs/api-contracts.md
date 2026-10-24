@@ -78,7 +78,8 @@ data. Brand, guideline, and fact values are fictional.
       },
       "suggested_fix": "great value",
       "confidence": 1.0,
-      "requires_human_review": false
+      "requires_human_review": false,
+      "ai_label": null
     },
     {
       "id": "review_e5f38cffb0464388877a2814ee618871-F-0002",
@@ -102,7 +103,8 @@ data. Brand, guideline, and fact values are fictional.
       },
       "suggested_fix": "designed to help",
       "confidence": 1.0,
-      "requires_human_review": true
+      "requires_human_review": true,
+      "ai_label": null
     }
   ]
 }
@@ -125,16 +127,26 @@ data. Brand, guideline, and fact values are fictional.
 | `suggested_fix` | string or null | Null means no safe automatic fix |
 | `confidence` | float | `0.0`–`1.0`; deterministic matches currently use `1.0` |
 | `requires_human_review` | bool | True for uncertain/claim/tone/expired-fact findings |
+| `ai_label` | string or null | Original AI label. Deterministic findings return `null` |
+
+Recognized `ai_label` values are `VIOLATION`, `NEEDS_HUMAN_JUDGEMENT`,
+`UNSUPPORTED`, `CONTRADICTED`, and `OUTDATED`. The field is independent of
+`category`, `severity`, and `requires_human_review`; it never replaces them. No
+AI model is called by this backend, so all findings currently return `null`.
 
 Citation fields:
 
 - Frontend contract: `rule_id`, `source`, `excerpt`.
 - Grounding metadata: `source_type` (`guideline` or `approved_fact`),
   `source_id`, `source_version`, `quoted_text`, `valid_until`.
+- `source_version` is `null` when the source has no recorded version. The backend
+  does not substitute an empty string or infer a version.
+- `valid_until` is an ISO 8601 calendar date (`YYYY-MM-DD`) or `null`.
 
 `excerpt` and `quoted_text` are the same exact source text. Sources are validated
 against rows belonging to the requested brand; the backend returns `500` rather
-than an invented citation if validation fails.
+than an invented citation if validation fails. A missing citation version is
+accepted only when the loaded source also has no version.
 
 ### Review status
 
@@ -281,6 +293,11 @@ are `brand_001` and `brand-demo`.
 
 Returns `{brand, approved_facts}`. Each fact includes `source_id`, `statement`,
 `source`, `source_version`, `valid_from`, `valid_until`, and `is_current`.
+`source_version` and `valid_until` may be `null`; a null version is not replaced
+with an empty string.
+
+Guideline `version` values are likewise nullable for approved sources that do not
+carry a version.
 
 ## Compatibility decisions
 
@@ -290,7 +307,8 @@ schema use different names. The implementation keeps both where practical:
 | Concern | Decision |
 |---|---|
 | Finding ID | Return both `id` and `finding_id` with the same value |
-| Citation | Return frontend fields plus grounded source metadata |
+| Citation | Return frontend fields plus grounded source metadata; `source_version` may be `null` |
+| AI label | Separate nullable `ai_label`; deterministic findings leave it `null` |
 | Severity | `low`, `medium`, `high` (frontend/rule-engine intersection) |
 | Status | Frontend workflow statuses; no `completed` string |
 | Missing phrase | `matched_text: ""`, `start: null`, `end: null` |

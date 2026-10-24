@@ -40,7 +40,7 @@ def citation_response(finding: ReviewFinding) -> CitationOut | None:
         excerpt=quoted_text,
         source_type=SourceType(finding.citation_source_type or "guideline"),
         source_id=finding.citation_source_id,
-        source_version=finding.citation_source_version or "",
+        source_version=finding.citation_source_version,
         quoted_text=quoted_text,
         valid_until=finding.citation_valid_until,
     )
@@ -61,6 +61,7 @@ def finding_response(finding: ReviewFinding) -> FindingResponse:
         suggested_fix=finding.suggested_fix,
         confidence=finding.confidence,
         requires_human_review=finding.requires_human_review,
+        ai_label=finding.ai_label,
     )
 
 

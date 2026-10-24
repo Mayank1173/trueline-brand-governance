@@ -5,12 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
+from ..ai_labels import AILabel
+
 
 @dataclass(frozen=True)
 class CitationDraft:
     source_type: str
     source_id: str
-    source_version: str
+    source_version: str | None
     source_label: str
     quoted_text: str
     valid_until: date | None = None
@@ -28,7 +30,7 @@ class RuleDefinition:
 
     rule_id: str
     source_id: str
-    source_version: str
+    source_version: str | None
     source_label: str
     quoted_text: str
     category: str
@@ -60,7 +62,7 @@ class FactDefinition:
     id: str
     statement: str
     source_label: str
-    source_version: str
+    source_version: str | None
     valid_from: date | None = None
     valid_until: date | None = None
     is_active: bool = True
@@ -79,3 +81,4 @@ class FindingDraft:
     suggested_fix: str | None
     confidence: float
     requires_human_review: bool
+    ai_label: AILabel | None = None

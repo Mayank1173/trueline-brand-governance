@@ -17,8 +17,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
+from .ai_labels import AILabel
 from .database import Base
 
 
@@ -68,7 +69,7 @@ class Guideline(TimestampMixin, Base):
     rule_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     section: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    version: Mapped[str] = mapped_column(String(64), nullable=False)
+    version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     severity: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -96,7 +97,7 @@ class ApprovedFact(TimestampMixin, Base):
     )
     statement: Mapped[str] = mapped_column(Text, nullable=False)
     source_label: Mapped[str] = mapped_column(String(255), nullable=False)
-    source_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     valid_from: Mapped[date | None] = mapped_column(Date, nullable=True)
     valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -145,6 +146,7 @@ class ReviewFinding(Base):
     category: Mapped[str] = mapped_column(String(32), nullable=False)
     severity: Mapped[str] = mapped_column(String(16), nullable=False)
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    ai_label: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     citation_source_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     citation_source_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -167,6 +169,18 @@ class ReviewFinding(Base):
     )
 
     review: Mapped[Review] = relationship(back_populates="findings")
+
+    @validates("ai_label")
+    def _validate_ai_label(self, _key: str, value: str | AILabel | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return AILabel(value).value
+        except ValueError as exc:
+            allowed = ", ".join(sorted(label.value for label in AILabel))
+            raise ValueError(
+                f"Unsupported ai_label {value!r}; expected one of: {allowed}"
+            ) from exc
 
 
 class ReviewEvent(Base):
