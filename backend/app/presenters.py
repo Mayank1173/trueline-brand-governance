@@ -77,6 +77,8 @@ def review_summary(review: Review) -> ReviewSummary:
         ),
         created_at=_as_utc(review.created_at),
         updated_at=_as_utc(review.updated_at),
+        ai_status=review.ai_status,
+        ai_error=review.ai_error,
     )
 
 
@@ -134,4 +136,5 @@ def fact_response(
         valid_from=fact.valid_from,
         valid_until=fact.valid_until,
         is_current=current,
+        superseded_by=fact.superseded_by,
     )

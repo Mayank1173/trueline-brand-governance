@@ -1,12 +1,8 @@
-"""Optional AI integration boundary.
+"""Legacy assistant protocol retained for compatibility.
 
-The MVP is fully deterministic and never calls an external model. A future
-provider may implement ``ReviewAssistant``, but its output must never create
-approved facts or citations. Any future AI text should only rewrite or explain
-findings that were already validated against the database.
-
-No provider is registered in this repository. ``TRUELINE_AI_ENABLED`` is
-accepted for configuration clarity but does not enable any network client.
+``ReviewService`` does not use this module. The active optional AI bridge is
+``app.ai_review``, which uses ``trueline.providers.anthropic``. Any AI output
+must never create approved facts or citations; findings must cite loaded rows.
 """
 
 from __future__ import annotations

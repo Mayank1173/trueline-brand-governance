@@ -1,14 +1,16 @@
 ﻿# Trueline Backend
 
-FastAPI review API for deterministic, explainable brand-governance checks. It
-does **not** call an AI model in this MVP. Every finding is produced by a
-database-driven rule and cites the approved guideline or approved fact loaded
-for the requested brand.
+FastAPI review API for deterministic, explainable brand-governance checks.
+Deterministic findings always come from database-driven rules and cite the
+approved guideline or approved fact loaded for the requested brand. An optional
+AI layer can add findings for guidelines marked `ai`/`hybrid`; it is disabled by
+default, never replaces deterministic checks, and reports its execution status.
 
 ## What is implemented
 
-- `POST /api/review` — validate a draft, run deterministic checks, validate
-  citations against the database, persist the review, return findings.
+- `POST /api/review` — validate a draft, run deterministic checks, optionally
+  run grounded AI checks, validate citations against the database, persist the
+  review, return findings with `ai_status`/`ai_error`.
 - `GET /health` — process and database health.
 - `GET /api/reviews` — paginated review list, optionally filtered by brand.
 - `GET /api/reviews/{review_id}` — persisted review and findings.
@@ -33,27 +35,38 @@ Swagger UI is available at `/docs`; ReDoc at `/redoc`.
 | `app/rule_engine/` | Independent deterministic engine with no FastAPI/DB imports |
 | `app/citations.py` | Strict source/version/quote validation |
 | `app/evaluation.py` | Pure helpers for precise-finding vs sentence-annotation matching |
-| `app/ai_labels.py` | Allowed original AI label values; no AI client |
-| `app/services.py` | Review orchestration and transaction handling |
+| `app/ai_labels.py` | Allowed original AI label values |
+| `app/ai_review.py` | Optional AI bridge, strict citation grounding, execution statuses |
+| `app/services.py` | Review orchestration, merge/dedupe, transaction handling |
 | `app/seed.py`, `app/seed_data.py` | Clearly labelled illustrative demo data |
-| `app/ai.py` | Disabled future AI boundary; no provider is wired in |
+| `app/ai.py` | Legacy assistant protocol; not used by `ReviewService` |
+| `trueline/providers/` | Swappable AI providers (Anthropic) |
 | `migrations/` | Alembic revisions for the review schema |
 
 ### Review flow
 
 1. Validate the request with Pydantic and configured size limits.
 2. Load the brand, active guidelines, and approved facts **scoped to that brand**.
-3. Run `RuleEngine` over the draft (no network, no model).
-4. Validate every citation against the loaded source rows.
-5. Derive status: `needs_human_review` if any finding needs a human, otherwise
-   `changes_requested` if there are findings, otherwise `approved`.
-6. Insert review, findings, and two audit events in one transaction.
-7. Return the response only after the commit succeeds. A failed commit returns
+3. Run `RuleEngine` over computed/hybrid rules (no network, no model). AI-only
+   rules are excluded from the deterministic engine.
+4. If enabled and configured, send ai/hybrid guidelines and active facts to the
+   AI provider. AI findings with missing, unknown, mismatched, or ungrounded
+   citations are rejected; rejected findings make the run `degraded`.
+5. Merge AI findings with deterministic findings, keeping deterministic results
+   on overlap, and validate every citation against the loaded source rows.
+6. Derive status: `needs_human_review` if any finding needs a human or AI did
+   not complete cleanly, otherwise `changes_requested` if there are findings,
+   otherwise `approved`.
+7. Insert review, findings, AI status/error, and two audit events in one
+   transaction.
+8. Return the response only after the commit succeeds. A failed commit returns
    `503` and is rolled back.
 
 ## Windows PowerShell setup
 
-Requires Python 3.10 or newer. Run these commands from the repository root.
+Requires Python 3.10 or newer for the deterministic backend. The optional AI
+package requires Python 3.11 or newer. Run these commands from the repository
+root.
 
 ```powershell
 cd backend
@@ -155,8 +168,10 @@ has been verified in this workspace.** PostgreSQL has not been run or validated.
 
 - `brands`
 - `guidelines` (rule ID, source ID, nullable version, exact quoted source text, matcher config)
-- `approved_facts` (statement, source, nullable version, validity window)
-- `reviews` (draft, purpose, status, ruleset/engine versions, evaluation date)
+- `approved_facts` (statement, source, nullable version, validity window,
+  active flag, optional `superseded_by` fact ID)
+- `reviews` (draft, purpose, status, ruleset/engine versions, evaluation date,
+  nullable `ai_status`/`ai_error`)
 - `review_findings` (span, category, severity, explanation, nullable AI label, citation fields)
 - `review_events` (ordered audit trail)
 
@@ -175,10 +190,31 @@ All backend variables use the `TRUELINE_` prefix. See `.env.example`.
 | `TRUELINE_MAX_REQUEST_BYTES` | `1000000` | `Content-Length` request cap |
 | `TRUELINE_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins |
 | `TRUELINE_RULESET_VERSION` | `demo-ruleset-2026.10` | Stored on each review |
-| `TRUELINE_AI_ENABLED` | `false` | Accepted for future use; no provider is wired in |
+| `TRUELINE_AI_ENABLED` | `false` | Enables AI review only when `ANTHROPIC_API_KEY` is also set |
 | `TRUELINE_LOG_LEVEL` | `INFO` | Python logging level |
 
-CORS never enables credentials and never defaults to a wildcard.
+AI provider variables (no real secret belongs in the repository):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | empty | Required, non-empty key to enable AI |
+| `ANTHROPIC_MODEL` | `claude-3-5-sonnet-20241022` | Provider model |
+| `ANTHROPIC_MAX_TOKENS` | `4096` | Provider response limit |
+| `ANTHROPIC_TIMEOUT_SECONDS` | `30` | Provider request timeout |
+
+Both the backend `Settings.ai_enabled` flag and the root `trueline.config`
+settings read `TRUELINE_AI_ENABLED`. A key alone is not sufficient. To enable
+AI, install the root package (which provides `trueline` and `anthropic`) into
+the same environment:
+
+```powershell
+# from the repository root
+pip install -e ".[dev]"
+```
+
+If the package is missing, the review still completes deterministically with
+`ai_status: "unavailable"`. The test suite mocks the provider; it never makes a
+paid API call. CORS never enables credentials and never defaults to a wildcard.
 
 ## Frontend connection
 
@@ -207,6 +243,8 @@ contract use different names. The backend returns a compatible superset:
 - `FindingResponse.ai_label` is a separate nullable original AI label. Valid
   non-null values are `VIOLATION`, `NEEDS_HUMAN_JUDGEMENT`, `UNSUPPORTED`,
   `CONTRADICTED`, and `OUTDATED`. Deterministic findings leave it `null`.
+- Top-level `ai_status` and `ai_error` are additive on submit, summary, and
+  detail responses. Both may be `null` for rows created before migration 0003.
 - Severity is `low | medium | high`.
 - Status is `approved | changes_requested | needs_human_review`.
 - Missing required phrases and length violations use `matched_text: ""` with
@@ -246,13 +284,34 @@ review remains required where indicated.
 ### AI label boundary
 
 `ai_label` is the original label an AI system may have assigned; it is not a
-backend decision. The deterministic engine always leaves it `null`, and this
-backend contains no AI client. A future adapter may set
-`FindingDraft.ai_label`; `ReviewService` validates and persists it, and both the
-submit and detail responses expose it. The adapter must not create citations or
-approved facts and must not overwrite the deterministic `category`, `severity`,
-`requires_human_review`, or review status. Non-null values are validated against
-the five allowed labels before persistence and again when building the response.
+backend decision. The deterministic engine always leaves it `null`. AI findings
+may set `FindingDraft.ai_label`; `ReviewService` validates and persists it, and
+both the submit and detail responses expose it. AI findings cannot create
+citations or approved facts and cannot overwrite deterministic findings. A
+finding with missing, unknown, mismatched, or ungrounded citation is rejected
+rather than stripped. Non-null labels are validated against the five allowed
+values before persistence and again when building the response.
+
+### AI execution statuses
+
+`ai_status` is additive in `POST /api/review`, review summaries, and review
+details. `ai_error` is a safe, human-readable explanation or `null`.
+
+| `ai_status` | Meaning | Requires human? |
+|---|---|---|
+| `skipped` | No ai/hybrid guidelines are configured | No |
+| `success` | AI completed; all returned citations were grounded | No |
+| `disabled` | `TRUELINE_AI_ENABLED` is false but AI work is configured | Yes |
+| `not_configured` | Enabled but no API key/provider is available | Yes |
+| `unavailable` | The `trueline` package is not installed | Yes |
+| `timeout` | Provider request timed out | Yes |
+| `degraded` | Provider failed or one or more AI findings were rejected | Yes |
+
+Only facts active on the evaluation date are sent. Facts with
+`status_on_evaluation_date` of `inactive`, `superseded`, `expired`, or
+`not_yet_valid` are excluded; `superseded_by` is preserved when known. The AI
+layer uses `asyncio.run` and is intended for the current synchronous route; do
+not call it from an already-running event loop without an async refactor.
 
 ## Demo data warning
 
@@ -273,11 +332,14 @@ Not verified here:
 - PostgreSQL connectivity or migration execution
 - Render or any other hosting platform
 - Authentication/authorization or multi-tenant security (none implemented)
-- External AI provider integration (none implemented)
+- Live Anthropic API calls (the integration and failure paths are tested with
+  mocks; no paid call was made during development)
 
 For Render-style deployment:
 
 - Build: `pip install -r requirements.txt`
+- AI build: also `pip install -e ..` from `backend/` (installs `trueline` and
+  `anthropic`); without it AI reports `unavailable`
 - Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - Health check path: `/health`
 - Set `TRUELINE_DATABASE_URL` to the managed PostgreSQL URL

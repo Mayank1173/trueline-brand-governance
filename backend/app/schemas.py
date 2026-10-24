@@ -58,6 +58,16 @@ class SourceType(str, Enum):
     brand_config = "brand_config"
 
 
+class AIStatus(str, Enum):
+    disabled = "disabled"
+    skipped = "skipped"
+    not_configured = "not_configured"
+    unavailable = "unavailable"
+    timeout = "timeout"
+    degraded = "degraded"
+    success = "success"
+
+
 class ReviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -124,6 +134,8 @@ class ReviewResponse(BaseModel):
     review_id: str
     status: ReviewStatus
     findings: list[FindingResponse]
+    ai_status: AIStatus | None = None
+    ai_error: str | None = None
 
 
 class ReviewSummary(BaseModel):
@@ -135,6 +147,8 @@ class ReviewSummary(BaseModel):
     requires_human_review_count: int
     created_at: datetime
     updated_at: datetime
+    ai_status: AIStatus | None = None
+    ai_error: str | None = None
 
 
 class ReviewDetail(ReviewSummary):
@@ -197,6 +211,7 @@ class ApprovedFactResponse(BaseModel):
     valid_from: date | None = None
     valid_until: date | None = None
     is_current: bool
+    superseded_by: str | None = None
 
 
 class BrandGuidelinesResponse(BaseModel):

@@ -4,9 +4,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from trueline.config import settings
-from trueline.models import Category, Guideline
+from trueline.models import ApprovedFact, Category, Guideline
 from trueline.providers.anthropic import AnthropicProvider
 from trueline.providers.base import AIProvider, AIProviderError
+
+
+@pytest.fixture(autouse=True)
+def enable_ai_flag():
+    with patch.object(settings, "trueline_ai_enabled", True):
+        yield
 
 
 @pytest.fixture
@@ -553,3 +559,95 @@ class TestAnthropicProviderHealthCheck:
             with patch.object(settings, "anthropic_api_key", "test-key"):
                 result = await provider.health_check()
                 assert result is False
+
+
+class TestAnthropicProviderFactCitations:
+    @pytest.mark.asyncio
+    async def test_analyze_accepts_approved_fact_citation(self, provider):
+        mock_client = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.content = [
+            MagicMock(
+                text='[{"id": "ai-1", "matched_text": "Free shipping", '
+                '"start": 0, "end": 13, "category": "unsupported_claim", '
+                '"severity": "medium", "explanation": "Uses approved fact.", '
+                '"citation": {"rule_id": "FACT-1", "source": "Fact sheet", '
+                '"excerpt": "Free shipping on all orders."}, '
+                '"suggested_fix": null, "confidence": 0.9, '
+                '"requires_human_review": false}]'
+            )
+        ]
+        mock_client.messages.create.return_value = mock_response
+        facts = [
+            ApprovedFact(
+                id="FACT-1",
+                claim="Free shipping on all orders.",
+                evidence="Fact sheet",
+                category="shipping",
+            )
+        ]
+
+        with patch.object(provider, "_get_client", return_value=mock_client):
+            with patch.object(settings, "anthropic_api_key", "test-key"):
+                findings = await provider.analyze(
+                    draft_text="Free shipping for members.",
+                    content_purpose="email",
+                    guidelines=[],
+                    approved_facts=facts,
+                )
+
+        assert len(findings) == 1
+        citation = findings[0].citation
+        assert citation is not None
+        assert citation.rule_id == "FACT-1"
+        assert citation.source == "Fact sheet"
+        assert citation.excerpt == "Free shipping on all orders."
+        assert citation.document_id is None
+
+    @pytest.mark.asyncio
+    async def test_analyze_fact_excerpt_falls_back_to_claim(self, provider):
+        mock_client = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.content = [
+            MagicMock(
+                text='[{"id": "ai-1", "matched_text": "Free shipping", '
+                '"start": 0, "end": 13, "category": "unsupported_claim", '
+                '"severity": "medium", "explanation": "Uses approved fact.", '
+                '"citation": {"rule_id": "FACT-1", "source": "Fact sheet", '
+                '"excerpt": "Invented excerpt."}, '
+                '"suggested_fix": null, "confidence": 0.9, '
+                '"requires_human_review": false}]'
+            )
+        ]
+        mock_client.messages.create.return_value = mock_response
+        fact = ApprovedFact(
+            id="FACT-1",
+            claim="Free shipping on all orders.",
+            evidence="Fact sheet",
+            category="shipping",
+        )
+
+        with patch.object(provider, "_get_client", return_value=mock_client):
+            with patch.object(settings, "anthropic_api_key", "test-key"):
+                findings = await provider.analyze(
+                    draft_text="Free shipping for members.",
+                    content_purpose="email",
+                    guidelines=[],
+                    approved_facts=[fact],
+                )
+
+        assert findings[0].citation is not None
+        assert findings[0].citation.excerpt == fact.claim
+
+    @pytest.mark.asyncio
+    async def test_get_client_requires_enabled_flag(self, provider):
+        with patch.object(settings, "trueline_ai_enabled", False):
+            with patch.object(settings, "anthropic_api_key", "test-key"):
+                with pytest.raises(AIProviderError) as exc_info:
+                    await provider.analyze(
+                        draft_text="Test",
+                        content_purpose="test",
+                        guidelines=[],
+                        approved_facts=[],
+                    )
+        assert "TRUELINE_AI_ENABLED=true" in str(exc_info.value)

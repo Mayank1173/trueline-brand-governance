@@ -130,7 +130,8 @@ def list_reviews(
 def fact_is_current(fact: ApprovedFact, today: date | None = None) -> bool:
     current = today or datetime.now(timezone.utc).date()
     return not (
-        (fact.valid_from and current < fact.valid_from)
+        fact.superseded_by
+        or (fact.valid_from and current < fact.valid_from)
         or (fact.valid_until and current > fact.valid_until)
     )
 
