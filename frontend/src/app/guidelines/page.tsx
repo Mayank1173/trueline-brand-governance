@@ -44,17 +44,32 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 const chip = "rounded border border-line px-1.5 py-0.5 text-xs text-muted";
 
+// The backend puts the demo-data warning inside every rule title. The page already shows
+// it once in the disclaimer note, so strip it from the per-rule display.
+function cleanTitle(title: string): string {
+  const cleaned = title.replace(/\s*\(ILLUSTRATIVE DEMO DATA[^)]*\)/i, "").trim();
+  return cleaned || title;
+}
+
 function Live({ data }: { data: LiveData }) {
   const groups = new Map<string, Guideline[]>();
   for (const r of data.guidelines) {
     groups.set(r.category, [...(groups.get(r.category) ?? []), r]);
   }
+
+  const titles = new Set(data.guidelines.map((r) => cleanTitle(r.title)));
+  const sharedTitle = titles.size === 1 ? [...titles][0] : null;
+
   return (
     <>
       <p className="text-sm text-muted">
-        Rules for <span className="font-semibold text-ink">{data.brandName}</span>. Read-only. Demo data is
-        illustrative, not official brand policy.
+        Rules for <span className="font-semibold text-ink">{data.brandName}</span>. Read-only.
       </p>
+      <div role="note" className="rounded-xl border border-line bg-surface-2 p-3 text-sm">
+        <strong>Illustrative demo data.</strong> These brands, rules and facts are fictional and are not
+        official brand policy.
+        {sharedTitle && <span className="mt-1 block text-xs text-muted">Source document: {sharedTitle}</span>}
+      </div>
 
       {[...groups.entries()].map(([cat, rules]) => (
         <section key={cat} aria-label={CATEGORY_LABEL[cat] ?? cat} className="rounded-2xl border border-line bg-surface p-5">
@@ -64,7 +79,7 @@ function Live({ data }: { data: LiveData }) {
               <li key={r.source_id} className="text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={chip}>{r.rule_id}</span>
-                  <strong>{r.title}</strong>
+                  {!sharedTitle && <strong>{cleanTitle(r.title)}</strong>}
                   <span className="text-xs text-muted">
                     {r.severity} severity{r.section ? ` · §${r.section}` : ""}
                   </span>
@@ -83,14 +98,24 @@ function Live({ data }: { data: LiveData }) {
         ) : (
           <ul className="mt-3 space-y-3">
             {data.facts.map((f) => (
-              <li key={f.source_id} className="text-sm">
+              <li
+                key={f.source_id}
+                className={`text-sm ${f.is_current ? "" : "rounded-xl border border-dashed border-line bg-surface-2 p-3"}`}
+              >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={chip}>{f.source_id}</span>
-                  <span>{f.statement}</span>
+                  {!f.is_current && (
+                    <span className="rounded-full border border-line px-2 py-0.5 text-xs font-semibold text-amber">
+                      ⚠ Not current
+                    </span>
+                  )}
+                  <span className={f.is_current ? "" : "text-muted"}>{f.statement}</span>
                 </div>
                 <p className="mt-1 text-xs text-muted">
-                  Source: {f.source} · {f.valid_until ? `Valid until ${f.valid_until}` : "No expiry set"} ·{" "}
-                  {f.is_current ? "Current" : "Not current"}
+                  Source: {f.source} · {f.valid_until ? `Valid until ${f.valid_until}` : "No expiry set"}
+                </p>
+                <p className={`mt-1 text-xs font-semibold ${f.is_current ? "text-muted" : "text-amber"}`}>
+                  {f.is_current ? "✓ Current" : "⚠ Not current: expired, not yet valid, or superseded. Do not rely on it."}
                 </p>
               </li>
             ))}

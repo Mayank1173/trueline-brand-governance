@@ -1,74 +1,135 @@
 ﻿# Trueline Frontend
 
-Explainable AI brand-governance review screen. Checks marketing drafts against brand guidelines BEFORE publication. It does not schedule or generate content.
+Next.js + TypeScript + Tailwind CSS frontend for Trueline, an explainable brand-governance tool. It reviews marketing drafts against brand guidelines **before** publication. AI recommends; a human decides.
 
-Stack: Next.js (App Router) + TypeScript + Tailwind CSS v4. Font: IBM Plex Mono.
+## Status
 
-## Run
+| Area | State |
+|---|---|
+| Draft Review | Live against the backend, with a mock mode for offline demos |
+| Dashboard | Live review list and counts (falls back to labelled sample data if the backend fails) |
+| Revision History | Live status and system events. Reviewer decisions appear once the backend saves them |
+| Brand Guidelines | Live rules and approved facts, read-only |
+| Approvals | **Mock only.** The UI is built; the backend decision endpoint is not connected yet |
 
-    cd frontend
-    npm install
-    npm run dev
+## Local setup
 
-Open http://localhost:3000. Mock mode is the default.
+Requires Node.js 18.18 or newer.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:3000.
+
+### Running against the real backend
+
+1. Start the backend (from its own folder):
+   ```bash
+   cd backend
+   python -m uvicorn app.main:app --reload --port 8000
+   ```
+   Check http://localhost:8000/docs.
+2. Create `frontend/.env.local` (never committed):
+   ```
+   NEXT_PUBLIC_USE_MOCK=false
+   NEXT_PUBLIC_API_URL=http://localhost:8000
+   ```
+3. Restart `npm run dev`. Environment variables are only read at startup.
+
+Delete `.env.local` to return to mock mode.
+
+## Environment variables
+
+Only public values belong here. Never put API keys or Supabase service-role secrets in frontend code.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_USE_MOCK` | mock is on unless set to `false` | Switches between mock/sample data and the real API |
+| `NEXT_PUBLIC_API_URL` | none | Base URL of the FastAPI backend, used when mock is off |
+
+## Checks
+
+Run from `frontend/`:
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+There are no automated UI tests yet.
 
 ## Routes
 
-| Route | Purpose | Data |
-|---|---|---|
-| `/` | Redirects to `/dashboard` | n/a |
-| `/dashboard` | Draft overview | Sample data |
-| `/review` | Core screen: submit a draft, see findings | Mock review service |
-| `/guidelines` | Read-only brand guidelines | Sample data |
-| `/approvals` | Approve / request changes / reject | Sample data, decisions in React state only |
-| `/history` | Revisions and activity | Sample data |
+| Route | Description |
+|---|---|
+| `/` | Redirects to `/dashboard` |
+| `/dashboard` | Review status counts and recent reviews |
+| `/guidelines` | Brand rules and approved facts, read-only |
+| `/review` | Draft Review: submit a draft, see findings, accept or dismiss fixes, re-run |
+| `/approvals` | Approve / Request changes / Reject UI. **Mock decisions only** |
+| `/history` | Per-review audit trail, split into status/system events and reviewer decisions |
 
-Every page backed by fake data shows a "Sample data" notice.
+## Structure
 
-## Mock vs real API
+```
+src/
+  app/                 Routes and layout
+  components/          AppSidebar, AppHeader, ThemeToggle, DraftEditor, FindingCard,
+                       CitationPanel, SeverityBadge, StatusBadge, DisplayStatus,
+                       AiStatusNotice, ActivityLog, RevisionHistory, ApprovalActions,
+                       ConfirmDialog, EmptyState, SampleDataNotice
+  lib/
+    types.ts              API types
+    api.ts                Fetch helpers and error handling
+    reviewService.ts      Review requests (mock/live switch, 30 s timeout)
+    decisionService.ts    MOCK ONLY decision service. Swap point for the real endpoint
+    reviewLabel.ts        Display helpers (short IDs, status text, finding counts)
+    applyFix.ts           Applies a suggested fix to the draft safely
+    format.ts             Deterministic UTC timestamp formatting
+    workflowTypes.ts      History and sample-data types
+    mock/                 Mock review service and sample data (never used as real data)
+```
 
-`src/lib/reviewService.ts` is the single swap point. Mock is used unless `NEXT_PUBLIC_USE_MOCK=false`. Mock logic lives in `src/lib/mock/` and is kept separate from real API code. Do not put secrets in frontend env vars.
+## How the UI treats AI and human decisions
 
-## API contract (approved by Mayank, NOT yet confirmed by backend)
+- **Clean reviews are not "Approved".** A review with zero findings shows **Awaiting Human Approval** until a human approves it.
+- **"AI reviewed" is shown only when the backend reports `ai_status = success`.** `skipped` shows "Deterministic checks only". Any other non-success status shows that the AI review did not complete and human review is required.
+- **Accepting a fix edits the draft but does not mark it resolved.** The finding stays "not verified" until the review is re-run.
+- **Missing citations are never invented.** A finding without a citation shows a warning.
+- **Status and severity use icons and text, not colour alone.**
+- **Facts that are no longer current** are marked "Not current" on the Guidelines page.
+- The Guidelines page always shows an "Illustrative demo data" disclaimer.
 
-`POST /api/review` with `{brand_id, draft_text, purpose}` returns `{review_id, status, findings[]}`.
+## Mock approval decisions
 
-- `status`: approved | changes_requested | needs_human_review
-- `severity`: low | medium | high
-- `start`/`end`: zero-based offsets into the original draft, `end` exclusive
-- `citation`: `{rule_id, source, excerpt}` or null. Never invented; null shows a "human should verify" warning
-- `suggested_fix`: string or null. Null hides "Accept fix"
-- `confidence`: 0.0 to 1.0, shown as "AI confidence score", not a calibrated probability
-- `requires_human_review`: boolean
+`/approvals` runs on a sample draft with mock decisions. Mock decisions are labelled `[MOCK]`, attributed to "Mock reviewer (not a real person)", are not sent anywhere, and never appear in Revision History.
 
-## Behaviour rules
+When the backend decision endpoint exists, replace the body of `submitDecision()` in `src/lib/decisionService.ts` with the real request. Nothing else should need to change.
 
-- Accepting a fix edits the draft and marks the finding "fix applied, not verified until you re-run the review". Never "resolved".
-- Dismissed findings stay visible and can be reopened.
-- A banner shows when the draft differs from the reviewed text.
-- AI recommendations and human decisions are visually distinct.
-- Request changes and Reject require a comment.
-- Severity and status badges always have an icon plus a text label, never colour alone.
+## API endpoints used
 
-## Verification (run on 22 Oct 2026)
+`POST /api/review`, `GET /api/reviews`, `GET /api/reviews/{id}/history`, `GET /api/brands/{id}/guidelines`, `GET /api/brands/{id}/facts`.
 
-- `npx tsc --noEmit`: no output on a fresh clone of this branch
-- `npm run lint`: no output (clean)
-- Manually confirmed: dev server runs; a sample draft on `/review` returns 6 findings
-- NOT verified: accept-fix flow, error state, mobile layout, no-fix and no-citation cards, Dashboard, Guidelines, Approvals, History pages
-- No automated tests. No formal accessibility testing; no WCAG claims.
+There is **no approve/decision endpoint yet.** The contract is defined by the backend and documented in `docs/api-contracts.md`.
 
 ## Known gaps
 
-- Dashboard rows are not clickable
-- Fact expiry is not checked against today's date
-- Role switcher (Reviewer/Editor) is a demo control, not real permissions
-- Approval decisions are not persisted
-- No UI tests
-- No formal accessibility testing
+- Approvals use mock decisions; the real decision endpoint is not connected
+- Reviewer decisions in History stay empty until the backend records them
+- The brand list on Draft Review is a mock list, and Guidelines uses the fixed ID `brand_001` (could use `GET /api/brands`)
+- The header badge ("Live backend connected" / "Demo mode") reflects the environment variable, not a health check
+- `ai_status = success` and the timeout/degraded paths have not been seen live
+- Dashboard review rows are not clickable (no review detail page yet)
+- No automated UI tests
+- Accessibility has not been formally tested, and no WCAG compliance is claimed
+- Light mode has not been checked on every component
+- The background image `public/images/bg-stars.jpg` has an unconfirmed source and licence; the Dashboard illustration was AI-generated
 
-## Open questions for backend
+## Notes for teammates
 
-1. How is a missing-required-phrase finding represented in start/end? The frontend assumes empty `matched_text` means "append", with offsets omitted.
-2. Final category list. The UI shows the raw string for unknown categories.
-3. Real endpoints for brands, guidelines, history and reviewer decisions.
+- The root `.gitignore` originally ignored every `lib/` folder, which hid `frontend/src/lib`. An exception (`!frontend/src/lib/`) was added.
+- Theme token names such as `maroon` are kept for compatibility but now hold the current sage/amber palette values.

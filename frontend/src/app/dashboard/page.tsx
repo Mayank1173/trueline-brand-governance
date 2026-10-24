@@ -2,30 +2,37 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import DisplayStatus from "@/components/DisplayStatus";
 import EmptyState from "@/components/EmptyState";
 import SampleDataNotice from "@/components/SampleDataNotice";
 import StatusBadge from "@/components/StatusBadge";
 import { fetchReviews, isLive } from "@/lib/api";
 import { formatUtc } from "@/lib/format";
 import { SAMPLE_DRAFTS } from "@/lib/mock/sampleData";
+import { findingsText, shortReviewId } from "@/lib/reviewLabel";
 import type { ReviewStatus } from "@/lib/types";
 
 interface Row {
   id: string;
   title: string;
+  subtitle?: string;
   status: ReviewStatus;
+  findingCount: number;
   meta: string;
+  fullId?: string;
 }
 
 const SAMPLE_STATUSES: ReviewStatus[] = ["draft", "in_review", "changes_requested", "approved"];
-const LIVE_STATUSES: ReviewStatus[] = ["needs_human_review", "changes_requested", "approved"];
 
 const sampleRows: Row[] = SAMPLE_DRAFTS.map((d) => ({
   id: d.id,
   title: d.title,
   status: d.status,
+  findingCount: d.open_findings,
   meta: `Version ${d.version} · Updated ${formatUtc(d.updated_at)} · ${d.open_findings} open finding(s)`,
 }));
+
+const isAwaiting = (r: Row) => r.status === "approved" && r.findingCount === 0;
 
 export default function DashboardPage() {
   const [rows, setRows] = useState<Row[] | null>(isLive ? null : sampleRows);
@@ -41,9 +48,12 @@ export default function DashboardPage() {
         setRows(
           items.map((r) => ({
             id: r.review_id,
-            title: r.purpose || "Review",
+            title: `Review #${shortReviewId(r.review_id)}`,
+            subtitle: r.purpose ? `Purpose: ${r.purpose}` : undefined,
             status: r.status,
-            meta: `${r.finding_count} finding(s), ${r.requires_human_review_count} need human review · Updated ${formatUtc(r.updated_at)} · ${r.review_id}`,
+            findingCount: r.finding_count,
+            meta: `${findingsText(r.finding_count, r.requires_human_review_count)} · Updated ${formatUtc(r.updated_at)}`,
+            fullId: r.review_id,
           }))
         );
         setUsingSample(false);
@@ -59,7 +69,7 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const statuses = usingSample ? SAMPLE_STATUSES : LIVE_STATUSES;
+  const box = "rounded-2xl border border-line bg-surface p-4";
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -106,12 +116,29 @@ export default function DashboardPage() {
           <section aria-labelledby="counts-heading">
             <h2 id="counts-heading" className="text-lg font-semibold">Review status</h2>
             <ul className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-              {statuses.map((s) => (
-                <li key={s} className="rounded-2xl border border-line bg-surface p-4">
-                  <StatusBadge status={s} />
-                  <p className="mt-3 text-3xl font-bold">{rows.filter((r) => r.status === s).length}</p>
-                </li>
-              ))}
+              {usingSample ? (
+                SAMPLE_STATUSES.map((s) => (
+                  <li key={s} className={box}>
+                    <StatusBadge status={s} />
+                    <p className="mt-3 text-3xl font-bold">{rows.filter((r) => r.status === s).length}</p>
+                  </li>
+                ))
+              ) : (
+                <>
+                  <li className={box}>
+                    <StatusBadge status="needs_human_review" />
+                    <p className="mt-3 text-3xl font-bold">{rows.filter((r) => r.status === "needs_human_review").length}</p>
+                  </li>
+                  <li className={box}>
+                    <StatusBadge status="changes_requested" />
+                    <p className="mt-3 text-3xl font-bold">{rows.filter((r) => r.status === "changes_requested").length}</p>
+                  </li>
+                  <li className={box}>
+                    <DisplayStatus status="approved" findingCount={0} />
+                    <p className="mt-3 text-3xl font-bold">{rows.filter(isAwaiting).length}</p>
+                  </li>
+                </>
+              )}
             </ul>
           </section>
 
@@ -124,12 +151,14 @@ export default function DashboardPage() {
             ) : (
               <ul className="mt-3 space-y-3">
                 {rows.map((r) => (
-                  <li key={r.id} className="rounded-2xl border border-line bg-surface p-4">
+                  <li key={r.id} className={box}>
                     <div className="flex flex-wrap items-center gap-3">
                       <p className="font-semibold">{r.title}</p>
-                      <StatusBadge status={r.status} />
+                      <DisplayStatus status={r.status} findingCount={usingSample ? 1 : r.findingCount} />
                     </div>
-                    <p className="mt-2 break-all text-xs text-muted">{r.meta}</p>
+                    {r.subtitle && <p className="mt-1 text-sm text-muted">{r.subtitle}</p>}
+                    <p className="mt-2 text-xs text-muted">{r.meta}</p>
+                    {r.fullId && <p className="mt-1 break-all text-xs text-muted">ID: {r.fullId}</p>}
                   </li>
                 ))}
               </ul>
