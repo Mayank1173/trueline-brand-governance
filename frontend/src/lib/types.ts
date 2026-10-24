@@ -7,6 +7,15 @@ export type ReviewStatus =
 
 export type Severity = "low" | "medium" | "high";
 
+export type AIStatus =
+  | "disabled"
+  | "skipped"
+  | "not_configured"
+  | "unavailable"
+  | "timeout"
+  | "degraded"
+  | "success";
+
 // Shared category set. Confirm the final list with Mayank/Vandana.
 export type FindingCategory =
   | "unsupported_claim"
@@ -34,7 +43,7 @@ export interface Finding {
   explanation: string;
   citation: Citation | null; // null = no supporting guideline. Never invent one.
   suggested_fix: string | null; // null = no safe fix proposed
-  confidence?: number; // 0.0 to 1.0, NOT a calibrated probability
+  confidence?: number | null; // 0.0 to 1.0, NOT a calibrated probability
   requires_human_review: boolean;
 }
 
@@ -48,6 +57,8 @@ export interface ReviewResponse {
   review_id: string;
   status: ReviewStatus;
   findings: Finding[];
+  ai_status?: AIStatus | null; // absent or null on old reviews and on the mock
+  ai_error?: string | null;
 }
 
 export interface Brand {

@@ -1,3 +1,4 @@
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 
 export default function AppHeader() {
   return (
@@ -22,7 +23,11 @@ export default function AppHeader() {
           className="h-2 w-2 rounded-full bg-maroon"
         />
 
-        <span>Demo mode · Backend not connected</span>
+        <span>
+          {USE_MOCK
+            ? "Demo mode · Backend not connected"
+            : "Draft Review: live backend · other pages use sample data"}
+        </span>
       </div>
     </header>
   );

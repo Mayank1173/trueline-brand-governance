@@ -6,7 +6,7 @@ import type { Finding } from "./types";
  * we only trust them if the text at that position still matches.
  */
 export function applySuggestedFix(draft: string, f: Finding): string | null {
-  if (f.suggested_fix === null) return null;
+  if (typeof f.suggested_fix !== "string") return null;
 
   if (!f.matched_text) {
     return `${draft.trimEnd()} ${f.suggested_fix}`; // missing-phrase case: append

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import AiStatusNotice from "@/components/AiStatusNotice";
 import DraftEditor from "@/components/DraftEditor";
 import FindingCard, { type FindingState } from "@/components/FindingCard";
 import StatusBadge from "@/components/StatusBadge";
@@ -24,8 +25,7 @@ export default function ReviewPage() {
   const stale = result !== null && reviewedText !== draft;
   const openCount = result ? result.findings.filter((f) => states[f.id] === "open").length : 0;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function runReview() {
     if (!draft.trim()) {
       setError("Paste or type a draft before submitting.");
       return;
@@ -46,11 +46,16 @@ export default function ReviewPage() {
     }
   }
 
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    void runReview();
+  }
+
   function applyFix(f: Finding) {
     const next = applySuggestedFix(draft, f);
     if (next === null) {
       setNotice(
-        f.suggested_fix === null
+        typeof f.suggested_fix !== "string"
           ? "No automatic fix is available for this finding. Edit the draft manually."
           : `Couldn't find “${f.matched_text}” in the current draft. Edit it manually.`
       );
@@ -106,6 +111,16 @@ export default function ReviewPage() {
             {error && (
               <div role="alert" className="rounded-xl border border-maroon-soft bg-maroon/25 p-3 text-sm text-ink">
                 <strong>Review failed.</strong> {error}
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => void runReview()}
+                    disabled={loading}
+                    className="rounded-full border border-line px-4 py-1.5 text-sm font-medium text-ink hover:bg-surface-2 disabled:opacity-60"
+                  >
+                    Try again
+                  </button>
+                </div>
               </div>
             )}
 
@@ -157,6 +172,12 @@ export default function ReviewPage() {
                 <span>{result.findings.length} finding(s), {openCount} still open</span>
                 <span className="text-xs text-muted">Review ID: {result.review_id}</span>
               </div>
+
+              <AiStatusNotice aiStatus={result.ai_status} aiError={result.ai_error} />
+
+              <p className="text-xs text-muted">
+                Trueline recommends fixes. A human reviewer makes the final decision.
+              </p>
 
               {stale && (
                 <div role="status" className="rounded-xl border border-ink/40 bg-surface-2 p-3 text-sm">

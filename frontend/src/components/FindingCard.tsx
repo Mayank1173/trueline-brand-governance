@@ -28,7 +28,7 @@ const secondary = "rounded-full border border-line px-4 py-1.5 text-sm font-medi
 
 export default function FindingCard({ finding, state, onApply, onDismiss, onReopen }: Props) {
   const titleId = `finding-${finding.id}-title`;
-  const canFix = finding.suggested_fix !== null;
+  const canFix = typeof finding.suggested_fix === "string";
 
   return (
     <article
@@ -45,7 +45,7 @@ export default function FindingCard({ finding, state, onApply, onDismiss, onReop
             ● Human review required
           </span>
         )}
-        {finding.confidence !== undefined && (
+        {typeof finding.confidence === "number" && (
           <span className="text-xs text-muted">AI confidence score: {finding.confidence.toFixed(2)}</span>
         )}
       </div>
@@ -53,7 +53,9 @@ export default function FindingCard({ finding, state, onApply, onDismiss, onReop
       {finding.matched_text && (
         <p className="mt-3 text-sm text-muted">
           Flagged text:{" "}
-          <mark className="rounded bg-maroon px-1.5 py-0.5 text-white">{finding.matched_text}</mark>
+          <mark className="rounded border border-amber bg-amber/20 px-1.5 py-0.5 text-ink">
+            {finding.matched_text}
+          </mark>
         </p>
       )}
 
@@ -63,7 +65,7 @@ export default function FindingCard({ finding, state, onApply, onDismiss, onReop
         {finding.citation ? (
           <CitationPanel citation={finding.citation} />
         ) : (
-          <p className="rounded-xl border border-dashed border-maroon-soft p-3 text-sm text-maroon-soft">
+          <p className="rounded-xl border border-dashed border-amber p-3 text-sm text-amber">
             ⚠ No guideline citation available for this finding. It can’t be traced to a rule, so a human should
             verify it.
           </p>
@@ -95,7 +97,7 @@ export default function FindingCard({ finding, state, onApply, onDismiss, onReop
           </>
         )}
         {state === "fix_applied" && (
-          <p className="text-sm font-medium text-maroon-soft">
+          <p className="text-sm font-medium text-amber">
             ◷ Fix applied to the draft. Not verified until you re-run the review.
           </p>
         )}
