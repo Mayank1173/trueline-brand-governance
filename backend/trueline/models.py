@@ -20,7 +20,10 @@ class Severity(StrEnum):
 
 
 class Category(StrEnum):
-    """Finding categories - provisional until team agrees on shared enum."""
+    """Finding categories - provisional until team agrees on shared enum.
+
+    Includes both original categories and Northstar dataset categories.
+    """
     BANNED_TERM = "banned_term"
     TONE = "tone"
     MISSING_DISCLAIMER = "missing_disclaimer"
@@ -31,6 +34,27 @@ class Category(StrEnum):
     FORMATTING = "formatting"
     MISSING_CONTENT = "missing_content"
     LENGTH_LIMIT = "length_limit"
+    # Northstar dataset categories
+    NAMING = "naming"
+    TERMINOLOGY = "terminology"
+    BANNED_LANGUAGE = "banned_language"
+    REQUIRED_WORDING = "required_wording"
+    CLAIMS = "claims"
+    # Fact-related categories (for fact expiry/supersession and approved fact matches)
+    FACT_METADATA = "fact_metadata"
+    APPROVED_FACT = "approved_fact"
+
+
+class FindingLabel(StrEnum):
+    """Finding label from Northstar dataset evaluation.
+
+    Indicates the type of finding for routing and reporting.
+    """
+    VIOLATION = "violation"
+    NEEDS_HUMAN_JUDGEMENT = "needs_human_judgement"
+    UNSUPPORTED = "unsupported"
+    CONTRADICTED = "contradicted"
+    OUTDATED = "outdated"
 
 
 class ReviewStatus(StrEnum):
@@ -45,6 +69,12 @@ class Citation(BaseModel):
     rule_id: str = Field(..., description="Unique identifier of the guideline rule")
     source: str = Field(..., description="Guideline document name")
     excerpt: str = Field(..., description="Relevant excerpt from the guideline text")
+    document_id: str | None = Field(
+        None, description="Guideline document ID (e.g., NS-DOC-EDITORIAL)"
+    )
+    section: str | None = Field(
+        None, description="Section within the guideline document"
+    )
 
     model_config = {"extra": "forbid"}
 
@@ -54,7 +84,7 @@ class Finding(BaseModel):
     A brand violation finding with exact text offsets and citation.
 
     Validation rules:
-    - start and end: zero-based Python string indices (exclusive end)
+    - start and end: zero-based Unicode code point offsets (exclusive end)
     - draft_text[start:end] must equal matched_text (validated externally)
     - confidence must be between 0.0 and 1.0
     - Citations must be grounded in supplied approved guidelines
@@ -62,8 +92,12 @@ class Finding(BaseModel):
     """
     id: str = Field(default_factory=lambda: f"finding-{uuid4().hex[:8]}")
     matched_text: str = Field(..., description="Exact text from the original draft")
-    start: int = Field(..., ge=0, description="Zero-based start offset (inclusive)")
-    end: int = Field(..., ge=0, description="Zero-based end offset (exclusive)")
+    start: int = Field(
+        ..., ge=0, description="Zero-based start offset (inclusive), Unicode code points"
+    )
+    end: int = Field(
+        ..., ge=0, description="Zero-based end offset (exclusive), Unicode code points"
+    )
     category: Category
     severity: Severity
     explanation: str = Field(..., description="Why the content may violate a guideline")
@@ -72,6 +106,12 @@ class Finding(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score 0.0-1.0")
     requires_human_review: bool = Field(
         ..., description="Whether a human should verify the finding"
+    )
+    label: FindingLabel | None = Field(
+        None, description="Finding label for routing (violation, needs_human_judgement, etc.)"
+    )
+    rule_id: str | None = Field(
+        None, description="Source rule/guideline ID that produced this finding"
     )
 
     @field_validator("end")
@@ -91,6 +131,40 @@ class Guideline(BaseModel):
     text: str = Field(..., description="The approved guideline text")
     category: str = Field(..., description="Rule category")
     source: str = Field(..., description="Guideline document name")
+    version: str | None = Field(
+        None, description="Version of the approved guideline source, if recorded"
+    )
+    document_id: str | None = Field(
+        None, description="Guideline document ID (e.g., NS-DOC-EDITORIAL)"
+    )
+    section: str | None = Field(
+        None, description="Section within the guideline document"
+    )
+    patterns: list[str] = Field(
+        default_factory=list, description="Explicit regex patterns for computed checks"
+    )
+    check_method: str | None = Field(
+        None, description="Check method: computed, ai, or hybrid"
+    )
+    match_type: str | None = Field(
+        None, description="Match type: term, regex, required_phrase, length_limit, etc."
+    )
+    severity_default: str | None = Field(
+        None, description="Default severity: low, medium, high"
+    )
+    required_phrase: str | None = Field(
+        None, description="Required phrase for required_wording rules"
+    )
+    trigger: str | None = Field(
+        None, description="Trigger condition for required_wording rules"
+    )
+    case_sensitive: bool | None = Field(
+        None,
+        description=(
+            "Whether pattern matching is case-sensitive "
+            "(default: False for regex, True for term)"
+        ),
+    )
 
     model_config = {"extra": "forbid"}
 
@@ -100,7 +174,22 @@ class ApprovedFact(BaseModel):
     id: str = Field(..., description="Unique fact identifier")
     claim: str = Field(..., description="The approved factual claim")
     evidence: str = Field(..., description="Supporting evidence or source")
+    source_version: str | None = Field(
+        None, description="Version of the approved fact source, if recorded"
+    )
     category: str = Field(..., description="Fact category")
+    valid_from: str | None = Field(
+        None, description="ISO date when fact becomes valid"
+    )
+    expires_on: str | None = Field(
+        None, description="ISO date when fact expires"
+    )
+    status_on_evaluation_date: str | None = Field(
+        None, description="Status on evaluation date: active, expired, superseded"
+    )
+    superseded_by: str | None = Field(
+        None, description="ID of fact that supersedes this one"
+    )
 
     model_config = {"extra": "forbid"}
 
@@ -115,6 +204,9 @@ class ReviewRequest(BaseModel):
     )
     approved_facts: list[ApprovedFact] = Field(
         default_factory=list, description="Approved brand facts"
+    )
+    evaluation_date: str | None = Field(
+        None, description="ISO date for fact status evaluation (default: today)"
     )
 
     model_config = {"extra": "forbid"}
