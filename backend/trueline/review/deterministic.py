@@ -358,8 +358,10 @@ def _compile_rules(guidelines: list[Guideline]) -> list[DeterministicRule]:
         if not g.text or not g.text.strip():
             continue
 
-        # Use explicit patterns if provided (Northstar dataset format)
-        if g.patterns:
+        # Use explicit patterns if provided (Northstar dataset format).
+        # A required_wording rule may define only a required_phrase and rely on
+        # the legacy text for its trigger; it still needs explicit compilation.
+        if g.patterns or g.required_phrase:
             _compile_explicit_patterns(g, rules)
             continue
 
@@ -396,8 +398,9 @@ def _compile_explicit_patterns(g: Guideline, rules: list[DeterministicRule]) -> 
         regex = re.compile(rf"{re.escape(phrase)}", flags)
 
         trigger_patterns: list[re.Pattern[str]] = []
-        # Use patterns from guideline as trigger patterns (per schema - these indicate when rule applies)
-        for pattern_str in (g.patterns or []):
+        # Use explicit trigger patterns when provided; otherwise fall back to
+        # patterns (Northstar stores triggers in patterns for these rules).
+        for pattern_str in (g.trigger_patterns or g.patterns or []):
             try:
                 trigger_patterns.append(re.compile(pattern_str, flags))
             except re.error as e:
@@ -548,6 +551,7 @@ def _map_category(category_str: str) -> Category:
         "preferred_terminology": Category.PREFERRED_TERMINOLOGY,
         "required_phrase": Category.REQUIRED_PHRASE,
         "product_name_inconsistency": Category.PRODUCT_NAME_INCONSISTENCY,
+        "product_name": Category.PRODUCT_NAME_INCONSISTENCY,
         "missing_content": Category.MISSING_CONTENT,
         "length_limit": Category.LENGTH_LIMIT,
     }

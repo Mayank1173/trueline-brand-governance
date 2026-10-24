@@ -38,6 +38,20 @@ def list_active_facts(session: Session, brand_id: str) -> list[ApprovedFact]:
     return list(session.scalars(statement))
 
 
+def list_all_facts(session: Session, brand_id: str) -> list[ApprovedFact]:
+    """Return every fact, including inactive/historical rows.
+
+    The AI review layer needs historical facts to detect outdated references;
+    the deterministic rule engine continues to use active facts only.
+    """
+    statement = (
+        select(ApprovedFact)
+        .where(ApprovedFact.brand_id == brand_id)
+        .order_by(ApprovedFact.id)
+    )
+    return list(session.scalars(statement))
+
+
 def guideline_to_rule(guideline: Guideline) -> RuleDefinition:
     config: dict[str, Any] = guideline.config_json or {}
     patterns = _as_string_tuple(config.get("patterns"))

@@ -143,6 +143,13 @@ class Guideline(BaseModel):
     patterns: list[str] = Field(
         default_factory=list, description="Explicit regex patterns for computed checks"
     )
+    trigger_patterns: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Patterns that activate a required_wording rule. When empty, "
+            "patterns is used as the trigger list for backward compatibility."
+        ),
+    )
     check_method: str | None = Field(
         None, description="Check method: computed, ai, or hybrid"
     )
