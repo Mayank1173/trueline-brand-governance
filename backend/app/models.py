@@ -100,6 +100,7 @@ class ApprovedFact(TimestampMixin, Base):
     source_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     valid_from: Mapped[date | None] = mapped_column(Date, nullable=True)
     valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    superseded_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     brand: Mapped[Brand] = relationship(back_populates="approved_facts")
@@ -118,6 +119,8 @@ class Review(TimestampMixin, Base):
     ruleset_version: Mapped[str] = mapped_column(String(64), nullable=False)
     engine_version: Mapped[str] = mapped_column(String(32), nullable=False)
     evaluation_date: Mapped[date] = mapped_column(Date, nullable=False)
+    ai_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    ai_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     brand: Mapped[Brand] = relationship(back_populates="reviews")
     findings: Mapped[list[ReviewFinding]] = relationship(

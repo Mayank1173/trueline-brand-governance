@@ -13,7 +13,7 @@ names, this API returns a compatible superset (see
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/health` | Process and database health |
-| `POST` | `/api/review` | Submit a draft for deterministic review |
+| `POST` | `/api/review` | Submit a draft for deterministic and optional AI review |
 | `GET` | `/api/reviews` | Paginated review history |
 | `GET` | `/api/reviews/{review_id}` | One persisted review with findings |
 | `GET` | `/api/reviews/{review_id}/history` | Audit events for a review |
@@ -106,7 +106,9 @@ data. Brand, guideline, and fact values are fictional.
       "requires_human_review": true,
       "ai_label": null
     }
-  ]
+  ],
+  "ai_status": "skipped",
+  "ai_error": null
 }
 ```
 
@@ -131,8 +133,8 @@ data. Brand, guideline, and fact values are fictional.
 
 Recognized `ai_label` values are `VIOLATION`, `NEEDS_HUMAN_JUDGEMENT`,
 `UNSUPPORTED`, `CONTRADICTED`, and `OUTDATED`. The field is independent of
-`category`, `severity`, and `requires_human_review`; it never replaces them. No
-AI model is called by this backend, so all findings currently return `null`.
+`category`, `severity`, and `requires_human_review`; it never replaces them.
+Deterministic findings return `null`; AI findings may return one of these values.
 
 Citation fields:
 
@@ -146,7 +148,37 @@ Citation fields:
 `excerpt` and `quoted_text` are the same exact source text. Sources are validated
 against rows belonging to the requested brand; the backend returns `500` rather
 than an invented citation if validation fails. A missing citation version is
-accepted only when the loaded source also has no version.
+accepted only when the loaded source also has no version. AI findings without a
+valid, grounded citation are rejected; they are never returned with a stripped
+or invented citation.
+
+### AI execution fields
+
+`POST /api/review`, `GET /api/reviews`, and `GET /api/reviews/{review_id}` include
+two additive top-level fields:
+
+| Field | Type | Notes |
+|---|---|---|
+| `ai_status` | string or null | Execution state; `null` only for legacy persisted rows |
+| `ai_error` | string or null | Safe explanation for a non-success state |
+
+AI is active only for guidelines whose stored `check_method` is `ai` or
+`hybrid`. Computed-only rule sets return `skipped` and make no provider call.
+Both `TRUELINE_AI_ENABLED=true` and a non-empty `ANTHROPIC_API_KEY` are required.
+
+| `ai_status` | Meaning | Requires human? |
+|---|---|---|
+| `skipped` | No ai/hybrid guidelines configured | No |
+| `success` | AI completed; every returned citation was grounded | No |
+| `disabled` | AI work exists but the feature flag is off | Yes |
+| `not_configured` | Enabled but key/provider is missing | Yes |
+| `unavailable` | The optional `trueline` package is not installed | Yes |
+| `timeout` | Provider request exceeded `ANTHROPIC_TIMEOUT_SECONDS` | Yes |
+| `degraded` | Provider failed, or one or more AI findings were rejected | Yes |
+
+On `disabled`, `not_configured`, `unavailable`, `timeout`, or `degraded`, any
+deterministic findings are still returned and the review status becomes
+`needs_human_review`. The backend does not claim AI ran when it did not.
 
 ### Review status
 
@@ -154,7 +186,7 @@ accepted only when the loaded source also has no version.
 |---|---|
 | `approved` | No findings from the configured rules |
 | `changes_requested` | Findings exist and none require human judgment |
-| `needs_human_review` | At least one finding requires human judgment |
+| `needs_human_review` | A finding requires human judgment, or configured AI work did not complete cleanly |
 
 `draft` and `in_review` exist in the frontend type union for workflow states
 but are not emitted by `POST /api/review`.
@@ -224,7 +256,9 @@ Query parameters:
       "finding_count": 1,
       "requires_human_review_count": 0,
       "created_at": "2026-10-23T19:00:00Z",
-      "updated_at": "2026-10-23T19:00:00Z"
+      "updated_at": "2026-10-23T19:00:00Z",
+      "ai_status": "skipped",
+      "ai_error": null
     }
   ],
   "total": 1,
@@ -292,9 +326,12 @@ are `brand_001` and `brand-demo`.
 ### `GET /api/brands/{brand_id}/facts`
 
 Returns `{brand, approved_facts}`. Each fact includes `source_id`, `statement`,
-`source`, `source_version`, `valid_from`, `valid_until`, and `is_current`.
-`source_version` and `valid_until` may be `null`; a null version is not replaced
-with an empty string.
+`source`, `source_version`, `valid_from`, `valid_until`, `is_current`, and
+`superseded_by`. `source_version` and `valid_until` may be `null`; a null version
+is not replaced with an empty string. `is_current` is false for expired,
+not-yet-valid, or superseded facts. `superseded_by` is the ID of the replacing
+fact or `null`. Only facts active on the review's evaluation date are sent to
+the AI provider.
 
 Guideline `version` values are likewise nullable for approved sources that do not
 carry a version.

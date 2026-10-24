@@ -27,9 +27,17 @@ def test_response_shape_is_compatible_with_frontend(client, demo_payload):
     assert response.status_code == 200
     body = response.json()
 
-    assert set(body) == {"review_id", "status", "findings"}
+    assert set(body) == {
+        "review_id",
+        "status",
+        "findings",
+        "ai_status",
+        "ai_error",
+    }
     assert isinstance(body["review_id"], str) and body["review_id"]
     assert body["status"] in FRONTEND_STATUSES
+    assert body["ai_status"] == "skipped"
+    assert body["ai_error"] is None
     assert isinstance(body["findings"], list)
 
     for finding in body["findings"]:

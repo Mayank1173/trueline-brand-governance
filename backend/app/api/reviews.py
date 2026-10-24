@@ -59,6 +59,8 @@ def submit_review(
         review_id=review.id,
         status=review.status,
         findings=[finding_response(finding) for finding in review.findings],
+        ai_status=review.ai_status,
+        ai_error=review.ai_error,
     )
 
 

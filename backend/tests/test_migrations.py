@@ -41,6 +41,13 @@ def test_migrations_upgrade_and_downgrade(tmp_path, monkeypatch):
         column["name"]: column for column in inspector.get_columns("approved_facts")
     }
     assert fact_columns["source_version"]["nullable"] is True
+    assert fact_columns["superseded_by"]["nullable"] is True
+
+    review_columns = {
+        column["name"]: column for column in inspector.get_columns("reviews")
+    }
+    assert review_columns["ai_status"]["nullable"] is True
+    assert review_columns["ai_error"]["nullable"] is True
 
     finding_columns = {
         column["name"]: column for column in inspector.get_columns("review_findings")

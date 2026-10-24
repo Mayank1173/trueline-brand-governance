@@ -10,6 +10,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .ai_labels import AILabel
+from .ai_review import (
+    AI_STATUS_SUCCESS,
+    AIReviewOutcome,
+    guideline_check_method,
+    run_ai_review,
+)
 from .citations import validate_finding_citations
 from .config import Settings
 from .errors import NotFoundError, PersistenceError
@@ -21,18 +27,29 @@ from .repositories import (
     guideline_to_rule,
     list_active_facts,
     list_active_guidelines,
+    list_all_facts,
     list_brands,
     list_reviews,
 )
 from .rule_engine import ENGINE_VERSION, RuleEngine
+from .rule_engine.models import FindingDraft
 from .schemas import ReviewRequest
+
+_AI_NEEDS_HUMAN_REVIEW = {
+    "disabled",
+    "not_configured",
+    "unavailable",
+    "timeout",
+    "degraded",
+}
 
 logger = logging.getLogger(__name__)
 
 
 class ReviewService:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, ai_provider: object | None = None) -> None:
         self.settings = settings
+        self.ai_provider = ai_provider
 
     def submit(self, session: Session, payload: ReviewRequest) -> Review:
         try:
@@ -49,28 +66,57 @@ class ReviewService:
 
         guidelines = list_active_guidelines(session, brand.id)
         facts = list_active_facts(session, brand.id)
+        all_facts = list_all_facts(session, brand.id)
 
-        rules = [guideline_to_rule(row) for row in guidelines]
+        # AI-only rules must not be run by the deterministic engine. Hybrid
+        # rules run deterministically and are also sent to the AI provider.
+        rules = [
+            guideline_to_rule(row)
+            for row in guidelines
+            if guideline_check_method(row) in {"computed", "hybrid"}
+        ]
         fact_definitions = [fact_to_definition(row) for row in facts]
 
         evaluation_date = datetime.now(timezone.utc).date()
         purpose = payload.purpose or "general"
 
         engine = RuleEngine(rules, fact_definitions)
-        finding_drafts = engine.review(
+        deterministic_findings = engine.review(
             payload.draft_text,
             purpose=purpose,
             evaluation_date=evaluation_date,
+        )
+
+        try:
+            ai_outcome = run_ai_review(
+                draft_text=payload.draft_text,
+                brand_id=brand.id,
+                purpose=purpose,
+                guidelines=guidelines,
+                facts=all_facts,
+                evaluation_date=evaluation_date,
+                provider=self.ai_provider,
+                enabled=self.settings.ai_enabled,
+            )
+        except Exception as exc:
+            logger.exception("AI review failed safely")
+            ai_outcome = AIReviewOutcome(
+                status="degraded",
+                error=f"AI review failed safely: {exc.__class__.__name__}",
+            )
+
+        finding_drafts = _merge_findings(
+            deterministic_findings, ai_outcome.findings
         )
 
         validate_finding_citations(
             finding_drafts,
             brand_id=brand.id,
             guidelines={row.id: row for row in guidelines},
-            facts={row.id: row for row in facts},
+            facts={row.id: row for row in all_facts},
         )
 
-        status = _review_status(finding_drafts)
+        status = _review_status(finding_drafts, ai_outcome.status)
         review_id = _new_id("review")
         review = Review(
             id=review_id,
@@ -81,6 +127,8 @@ class ReviewService:
             ruleset_version=self.settings.ruleset_version,
             engine_version=ENGINE_VERSION,
             evaluation_date=evaluation_date,
+            ai_status=ai_outcome.status,
+            ai_error=ai_outcome.error,
         )
 
         for index, draft in enumerate(finding_drafts, start=1):
@@ -124,21 +172,33 @@ class ReviewService:
                 event_metadata={"brand_id": brand.id, "purpose": purpose},
             )
         )
+        if ai_outcome.status == AI_STATUS_SUCCESS:
+            actor = "Trueline deterministic + AI review pipeline"
+        elif ai_outcome.status == "skipped":
+            actor = "Trueline deterministic rule engine"
+        else:
+            actor = "Trueline deterministic rule engine (AI not completed)"
+
         review.events.append(
             ReviewEvent(
                 id=_new_id("event"),
                 sequence=2,
                 event_type="review_completed",
                 actor_type="system",
-                actor="Trueline deterministic rule engine",
+                actor=actor,
                 action=(
-                    f"Completed deterministic review with {len(finding_drafts)} "
-                    f"finding(s); status: {status}."
+                    f"Completed review with {len(finding_drafts)} finding(s); "
+                    f"status: {status}; AI status: {ai_outcome.status}."
                 ),
                 event_metadata={
                     "engine_version": ENGINE_VERSION,
                     "ruleset_version": self.settings.ruleset_version,
                     "finding_count": len(finding_drafts),
+                    "deterministic_finding_count": len(deterministic_findings),
+                    "ai_finding_count": len(ai_outcome.findings),
+                    "ai_status": ai_outcome.status,
+                    "ai_error": ai_outcome.error,
+                    "ai_rejected_finding_count": ai_outcome.rejected_count,
                     "requires_human_review": status == "needs_human_review",
                 },
             )
@@ -212,12 +272,49 @@ class ReviewService:
             raise PersistenceError("Could not read approved facts") from exc
 
 
-def _review_status(findings) -> str:
+def _review_status(findings: list[FindingDraft], ai_status: str) -> str:
+    # AI-required work that did not run cleanly must never masquerade as a
+    # complete approval, even when the deterministic checks found nothing.
+    if ai_status in _AI_NEEDS_HUMAN_REVIEW:
+        return "needs_human_review"
     if any(finding.requires_human_review for finding in findings):
         return "needs_human_review"
     if findings:
         return "changes_requested"
     return "approved"
+
+
+def _same_issue(left: FindingDraft, right: FindingDraft) -> bool:
+    if left.rule_id != right.rule_id:
+        return False
+    if left.start is None or right.start is None:
+        return left.start is None and right.start is None and (
+            left.matched_text.casefold() == right.matched_text.casefold()
+        )
+    left_end = left.end if left.end is not None else left.start
+    right_end = right.end if right.end is not None else right.start
+    return left.start < right_end and right.start < left_end
+
+
+def _merge_findings(
+    deterministic: list[FindingDraft], ai_findings: list[FindingDraft]
+) -> list[FindingDraft]:
+    """Keep deterministic results first and drop AI duplicates of the same issue."""
+    merged = list(deterministic)
+    for finding in ai_findings:
+        if any(_same_issue(finding, existing) for existing in merged):
+            continue
+        merged.append(finding)
+    merged.sort(
+        key=lambda item: (
+            item.start is None,
+            item.start if item.start is not None else 0,
+            item.end if item.end is not None else 0,
+            item.rule_id,
+            item.category,
+        )
+    )
+    return merged
 
 
 def _new_id(prefix: str) -> str:

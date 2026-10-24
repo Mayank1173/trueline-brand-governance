@@ -621,7 +621,10 @@ class TestReviewEngineEdgeCases:
 
         # This test verifies the lazy creation path (line 49)
         # by ensuring the engine works when ai_provider is None but settings has API key
-        with patch.object(settings, "anthropic_api_key", "test-key"):
+        with (
+            patch.object(settings, "anthropic_api_key", "test-key"),
+            patch.object(settings, "trueline_ai_enabled", True),
+        ):
             with patch("trueline.review.service.AnthropicProvider") as mock_provider_class:
                 mock_provider = AsyncMock()
                 mock_provider.analyze.return_value = []

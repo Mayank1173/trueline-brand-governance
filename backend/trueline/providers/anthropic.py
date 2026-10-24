@@ -39,8 +39,10 @@ SYSTEM_PROMPT = (
     "product_name_inconsistency, formatting, missing_content, length_limit\n"
     "- severity: One of: low, medium, high\n"
     "- explanation: Why this violates the guideline\n"
-    "- citation: Object with rule_id, source, excerpt from the guideline "
-    "that supports this finding (or null if no specific guideline applies)\n"
+    "- citation: Object with rule_id, source, and an excerpt copied from the "
+    "supporting guideline or approved fact (or null if no source applies). "
+    "For a fact citation, rule_id is the fact id and excerpt is copied from "
+    "that fact's claim.\n"
     "- suggested_fix: Proposed correction (or null if not applicable)\n"
     "- confidence: Float 0.0 to 1.0\n"
     "- requires_human_review: Boolean\n\n"
@@ -98,7 +100,10 @@ Return findings as a JSON array."""
 
 
 def _parse_findings(
-    response_text: str, draft_text: str, guidelines: list[Guideline]
+    response_text: str,
+    draft_text: str,
+    guidelines: list[Guideline],
+    approved_facts: list[ApprovedFact] | None = None,
 ) -> list[Finding]:
     """Parse and validate AI response into Finding objects."""
     try:
@@ -115,8 +120,10 @@ def _parse_findings(
             provider="anthropic",
         )
 
-    # Build guideline lookup for citation validation
+    # Build lookups for citation validation. A finding may cite either a
+    # guideline or an approved fact; both use the source row's id as rule_id.
     guideline_map = {g.id: g for g in guidelines}
+    fact_map = {f.id: f for f in approved_facts or []}
 
     findings = []
     for idx, raw in enumerate(raw_findings):
@@ -124,7 +131,7 @@ def _parse_findings(
             logger.warning(f"Skipping non-dict finding at index {idx}")
             continue
 
-        # Validate citation against supplied guidelines
+        # Validate citation against supplied guidelines or approved facts.
         citation = None
         if raw.get("citation"):
             cit_data = raw["citation"]
@@ -145,6 +152,22 @@ def _parse_findings(
                     excerpt=excerpt or guideline.text[:200],
                     document_id=guideline.document_id,
                     section=guideline.section,
+                )
+            elif rule_id and rule_id in fact_map:
+                fact = fact_map[rule_id]
+                excerpt = cit_data.get("excerpt", "")
+                if excerpt and excerpt not in fact.claim:
+                    logger.warning(
+                        f"Citation excerpt not found in approved fact {rule_id}; "
+                        f"using the approved claim instead"
+                    )
+                    excerpt = fact.claim[:200]
+                citation = Citation(
+                    rule_id=rule_id,
+                    source=fact.evidence,
+                    excerpt=excerpt or fact.claim[:200],
+                    document_id=None,
+                    section=None,
                 )
             else:
                 logger.warning(f"Citation references unknown rule_id: {rule_id}; ignoring")
@@ -209,12 +232,20 @@ class AnthropicProvider(AIProvider):
 
     def _get_client(self) -> anthropic.AsyncAnthropic:
         if self._client is None:
+            if not settings.trueline_ai_enabled:
+                raise AIProviderError(
+                    "AI review is disabled (set TRUELINE_AI_ENABLED=true)",
+                    provider="anthropic",
+                )
             if not settings.anthropic_api_key:
                 raise AIProviderError(
                     "ANTHROPIC_API_KEY not configured",
                     provider="anthropic",
                 )
-            self._client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+            self._client = anthropic.AsyncAnthropic(
+                api_key=settings.anthropic_api_key,
+                timeout=settings.anthropic_timeout_seconds,
+            )
         return self._client
 
     async def analyze(
@@ -269,7 +300,7 @@ class AnthropicProvider(AIProvider):
         response_text = response.content[0].text
         logger.debug(f"Anthropic response: {response_text[:500]}...")
 
-        return _parse_findings(response_text, draft_text, guidelines)
+        return _parse_findings(response_text, draft_text, guidelines, approved_facts)
 
     async def health_check(self) -> bool:
         """Check if Anthropic API is accessible."""
