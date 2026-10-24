@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import EmptyState from "@/components/EmptyState";
@@ -62,19 +63,29 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-6xl">
-          Welcome <span className="text-maroon-soft">back.</span>
-        </h1>
-        <p className="mt-3 text-sm text-muted">
-          Workspace: <span className="font-semibold text-ink">Sample Brand</span>
-        </p>
-        <Link
-          href="/review"
-          className="mt-5 inline-block rounded-full bg-maroon px-6 py-3 text-sm font-semibold text-white hover:bg-maroon-hover"
-        >
-          Review new content →
-        </Link>
+      <div className="grid items-center gap-6 md:grid-cols-2">
+        <div>
+          <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-6xl">
+            Welcome <span className="text-maroon-soft">back.</span>
+          </h1>
+          <p className="mt-3 text-sm text-muted">
+            Workspace: <span className="font-semibold text-ink">Sample Brand</span>
+          </p>
+          <Link
+            href="/review"
+            className="mt-5 inline-block rounded-full bg-maroon px-6 py-3 text-sm font-semibold text-white hover:bg-maroon-hover"
+          >
+            Review new content →
+          </Link>
+        </div>
+        <Image
+          src="/images/hero-review.png"
+          alt="Illustration of a magnifying glass examining one of several pricing documents"
+          width={1348}
+          height={741}
+          priority
+          className="h-auto w-full rounded-2xl border border-line"
+        />
       </div>
 
       {usingSample && (
