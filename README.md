@@ -53,3 +53,24 @@ Full setup, configuration, testing, migration, and deployment details are in
   locally. Migrations are written to be PostgreSQL-compatible.
 - The frontend is unchanged. To connect it, set `NEXT_PUBLIC_USE_MOCK=false`
   and `NEXT_PUBLIC_API_URL=http://localhost:8000`.
+
+## AI review engine (`backend/trueline/`)
+
+The optional AI review engine adds provider-backed findings on top of the
+deterministic backend rule engine. It is disabled by default and never replaces
+the deterministic checks.
+
+- `backend/trueline/review/` — review orchestration and deterministic checks
+- `backend/trueline/providers/` — swappable AI provider interface
+- `backend/trueline/adapters/fastapi_adapter.py` — conversion to the API contract
+- `backend/trueline/eval.py` — Northstar evaluation harness
+
+Run the AI-engine tests and evaluation from the repository root:
+
+```powershell
+python -m pytest tests -q
+python -m trueline.eval --output-dir eval_results
+```
+
+The backend keeps final approval with a human. AI findings without a valid
+citation are never surfaced, and no citation metadata is fabricated.
