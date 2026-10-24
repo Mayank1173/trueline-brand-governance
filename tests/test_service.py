@@ -30,7 +30,7 @@ class MockAIProvider(AIProvider):
     def name(self) -> str:
         return "mock"
 
-    async def analyze(self, draft_text, content_purpose, guidelines, approved_facts):
+    async def analyze(self, draft_text, content_purpose, guidelines, approved_facts, evaluation_date=None):
         self.called = True
         if self._should_fail:
             raise AIProviderError(self._error_message, provider="mock")

@@ -11,6 +11,7 @@ from trueline.models import (
     Category,
     Citation,
     Finding,
+    FindingLabel,
     Guideline,
     ReviewRequest,
     Severity,
@@ -142,6 +143,8 @@ def _parse_findings(
                     rule_id=rule_id,
                     source=guideline.source,
                     excerpt=excerpt or guideline.text[:200],
+                    document_id=guideline.document_id,
+                    section=guideline.section,
                 )
             else:
                 logger.warning(f"Citation references unknown rule_id: {rule_id}; ignoring")
@@ -167,6 +170,13 @@ def _parse_findings(
             # Do NOT silently correct - skip this finding
             continue
 
+        # Parse label from AI response if provided
+        label_str = raw.get("label")
+        label = FindingLabel(label_str) if label_str else None
+
+        # Parse rule_id from AI response if provided
+        rule_id = raw.get("rule_id")
+
         finding = Finding(
             id=raw.get("id", f"finding-{idx}"),
             matched_text=matched_text,
@@ -179,6 +189,8 @@ def _parse_findings(
             suggested_fix=raw.get("suggested_fix"),
             confidence=float(raw.get("confidence", 0.5)),
             requires_human_review=bool(raw.get("requires_human_review", False)),
+            label=label,
+            rule_id=rule_id,
         )
         findings.append(finding)
 
@@ -211,6 +223,7 @@ class AnthropicProvider(AIProvider):
         content_purpose: str,
         guidelines: list[Guideline],
         approved_facts: list[ApprovedFact],
+        evaluation_date: str | None = None,
     ) -> list[Finding]:
         """Analyze draft using Anthropic Claude."""
         client = self._get_client()
@@ -221,6 +234,7 @@ class AnthropicProvider(AIProvider):
             content_purpose=content_purpose,
             guidelines=guidelines,
             approved_facts=approved_facts,
+            evaluation_date=evaluation_date,
         )
 
         user_prompt = _build_user_prompt(request)

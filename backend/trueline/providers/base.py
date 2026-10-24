@@ -30,6 +30,7 @@ class AIProvider(ABC):
         content_purpose: str,
         guidelines: list[Guideline],
         approved_facts: list[ApprovedFact],
+        evaluation_date: str | None = None,
     ) -> list[Finding]:
         """
         Analyze draft text against guidelines using AI.
@@ -39,6 +40,7 @@ class AIProvider(ABC):
             content_purpose: Purpose/context of the content
             guidelines: Approved brand guidelines
             approved_facts: Approved brand facts
+            evaluation_date: Optional ISO date for fact status evaluation
 
         Returns:
             List of AI-generated findings
