@@ -136,7 +136,7 @@ export async function mockSubmitReview(req: ReviewRequest): Promise<ReviewRespon
     ? "needs_human_review"
     : findings.length > 0
       ? "changes_requested"
-      : "approved";
+      : "pending_approval";
 
   return { review_id: `review_mock_${Date.now()}`, status, findings };
 }

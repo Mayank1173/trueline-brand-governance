@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-FRONTEND_STATUSES = {"approved", "changes_requested", "needs_human_review"}
+FRONTEND_STATUSES = {
+    "approved",
+    "changes_requested",
+    "needs_human_review",
+    "pending_approval",
+    "rejected",
+}
 FRONTEND_SEVERITIES = {"low", "medium", "high"}
 REQUIRED_FINDING_FIELDS = {
     "id",
@@ -66,6 +72,21 @@ def test_response_shape_is_compatible_with_frontend(client, demo_payload):
             assert citation["rule_id"] == finding["rule_id"]
             assert citation["source"]
             assert citation["excerpt"] == citation["quoted_text"]
+
+
+def test_clean_review_response_uses_frontend_pending_status(client):
+    response = client.post(
+        "/api/review",
+        json={
+            "brand_id": "brand_001",
+            "draft_text": "Trueline helps customers. Terms apply.",
+            "purpose": "marketing",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "pending_approval"
+    assert body["findings"] == []
 
 
 def test_offsets_can_replace_matched_text_like_applyFix(client):

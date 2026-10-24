@@ -86,7 +86,15 @@ export async function submitReview(req: ReviewRequest): Promise<ReviewResponse> 
     typeof d !== "object" ||
     d === null ||
     typeof d.review_id !== "string" ||
-    !["approved", "changes_requested", "needs_human_review"].includes(d.status as string) ||
+    ![
+      "draft",
+      "in_review",
+      "changes_requested",
+      "needs_human_review",
+      "pending_approval",
+      "approved",
+      "rejected",
+    ].includes(d.status as string) ||
     !Array.isArray(d.findings)
   ) {
     throw new Error("The review service returned an unexpected response. Check the backend contract.");

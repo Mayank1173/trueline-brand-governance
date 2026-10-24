@@ -9,13 +9,15 @@ const STATUS_TEXT: Record<string, string> = {
   in_review: "In Review",
   changes_requested: "Changes Requested",
   needs_human_review: "Needs Human Review",
+  pending_approval: "Awaiting Human Approval",
   approved: "Approved",
+  rejected: "Rejected",
 };
 
 // Plain-text twin of DisplayStatus, for places that can't render a badge (e.g. <option>).
-// A clean review (0 findings) is NOT shown as Approved until a human approves.
+// A clean automated review is pending until a human approves it.
 export function statusText(status: string, findingCount: number): string {
-  if (status === "approved" && findingCount === 0) return "Awaiting Human Approval";
+  if (status === "pending_approval") return "Awaiting Human Approval";
   return STATUS_TEXT[status] ?? status;
 }
 
