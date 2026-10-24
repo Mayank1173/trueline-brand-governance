@@ -1,73 +1,190 @@
+"use client";
+import { useEffect, useState } from "react";
 import SampleDataNotice from "@/components/SampleDataNotice";
 import { SAMPLE_GUIDELINES as g } from "@/lib/mock/sampleData";
+import { apiGet, isLive } from "@/lib/api";
 
-function RuleId({ id }: { id: string }) {
-  return <span className="rounded border border-line px-1.5 py-0.5 text-xs text-muted">{id}</span>;
+const BRAND_ID = "brand_001"; // same ID the review flow uses with the backend
+
+interface Guideline {
+  source_id: string;
+  rule_id: string;
+  title: string;
+  section: string | null;
+  content: string;
+  category: string;
+  severity: string;
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+interface Fact {
+  source_id: string;
+  statement: string;
+  source: string;
+  valid_until: string | null;
+  is_current: boolean;
+}
+
+interface LiveData {
+  brandName: string;
+  guidelines: Guideline[];
+  facts: Fact[];
+}
+
+const CATEGORY_LABEL: Record<string, string> = {
+  tone: "Voice and tone",
+  preferred_terminology: "Preferred terminology",
+  banned_term: "Banned or discouraged terms",
+  required_phrase: "Required phrases and disclaimers",
+  unsupported_claim: "Claims",
+  product_name: "Product names",
+  formatting: "Formatting",
+  length_limit: "Length limits",
+  fact_metadata: "Fact validity",
+};
+
+const chip = "rounded border border-line px-1.5 py-0.5 text-xs text-muted";
+
+function Live({ data }: { data: LiveData }) {
+  const groups = new Map<string, Guideline[]>();
+  for (const r of data.guidelines) {
+    groups.set(r.category, [...(groups.get(r.category) ?? []), r]);
+  }
   return (
-    <section aria-labelledby={id} className="rounded-2xl border border-line bg-surface p-5">
-      <h2 id={id} className="text-lg font-semibold">{title}</h2>
-      <ul className="mt-3 space-y-3">{children}</ul>
-    </section>
+    <>
+      <p className="text-sm text-muted">
+        Rules for <span className="font-semibold text-ink">{data.brandName}</span>. Read-only. Demo data is
+        illustrative, not official brand policy.
+      </p>
+
+      {[...groups.entries()].map(([cat, rules]) => (
+        <section key={cat} aria-label={CATEGORY_LABEL[cat] ?? cat} className="rounded-2xl border border-line bg-surface p-5">
+          <h2 className="text-lg font-semibold">{CATEGORY_LABEL[cat] ?? cat}</h2>
+          <ul className="mt-3 space-y-3">
+            {rules.map((r) => (
+              <li key={r.source_id} className="text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={chip}>{r.rule_id}</span>
+                  <strong>{r.title}</strong>
+                  <span className="text-xs text-muted">
+                    {r.severity} severity{r.section ? ` · §${r.section}` : ""}
+                  </span>
+                </div>
+                <p className="mt-1 text-ink">{r.content}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+
+      <section aria-labelledby="facts-h" className="rounded-2xl border border-line bg-surface p-5">
+        <h2 id="facts-h" className="text-lg font-semibold">Approved facts</h2>
+        {data.facts.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No approved facts for this brand.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {data.facts.map((f) => (
+              <li key={f.source_id} className="text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={chip}>{f.source_id}</span>
+                  <span>{f.statement}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  Source: {f.source} · {f.valid_until ? `Valid until ${f.valid_until}` : "No expiry set"} ·{" "}
+                  {f.is_current ? "Current" : "Not current"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
   );
 }
 
-const item = "flex flex-wrap items-center gap-2 text-sm";
+function Sample() {
+  return (
+    <>
+      <SampleDataNotice>Live guidelines need the backend. These rules are examples only.</SampleDataNotice>
+      <p className="text-sm text-muted">
+        Rules for <span className="font-semibold text-ink">{g.name}</span>.
+      </p>
+      <ul className="space-y-2 text-sm">
+        {g.banned_terms.map((r) => (
+          <li key={r.rule_id}>
+            <span className={chip}>{r.rule_id}</span> <strong>{r.term}</strong>: {r.reason}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
 
 export default function GuidelinesPage() {
+  const [data, setData] = useState<LiveData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!isLive) return;
+    let cancelled = false;
+    Promise.all([
+      apiGet<{ brand?: { name?: string }; guidelines?: unknown }>(`/api/brands/${BRAND_ID}/guidelines`),
+      apiGet<{ approved_facts?: unknown }>(`/api/brands/${BRAND_ID}/facts`),
+    ])
+      .then(([gl, fa]) => {
+        if (cancelled) return;
+        if (!Array.isArray(gl.guidelines) || !Array.isArray(fa.approved_facts)) {
+          throw new Error("The backend returned an unexpected guidelines response.");
+        }
+        setData({
+          brandName: gl.brand?.name ?? BRAND_ID,
+          guidelines: gl.guidelines as Guideline[],
+          facts: fa.approved_facts as Fact[],
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Couldn't load guidelines.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [attempt]);
+
+  function retry() {
+    setError(null);
+    setData(null);
+    setAttempt((a) => a + 1);
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight md:text-5xl">Brand guidelines</h1>
-        <p className="mt-3 text-sm text-muted">
-          Rules for <span className="font-semibold text-ink">{g.name}</span>. Read-only: editing rules is planned for a later release.
+      <h1 className="text-3xl font-bold tracking-tight md:text-5xl">Brand guidelines</h1>
+
+      {!isLive && <Sample />}
+
+      {isLive && error && (
+        <div role="alert" className="rounded-xl border border-line bg-surface p-3 text-sm">
+          <strong>Couldn’t load guidelines.</strong> {error}
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={retry}
+              className="rounded-full border border-line px-4 py-1.5 text-sm font-medium hover:bg-surface-2"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isLive && !error && !data && (
+        <p role="status" className="rounded-2xl border border-line bg-surface p-5 text-sm text-muted">
+          Loading guidelines…
         </p>
-      </div>
+      )}
 
-      <SampleDataNotice>These rules are examples, not a real brand’s guidelines.</SampleDataNotice>
-
-      <Section id="voice" title="Voice and tone">
-        {g.voice.map((r) => (
-          <li key={r.rule_id} className={item}><RuleId id={r.rule_id} /> {r.text}</li>
-        ))}
-      </Section>
-
-      <Section id="preferred" title="Preferred terminology">
-        {g.preferred_terms.map((r) => (
-          <li key={r.rule_id} className={item}>
-            <RuleId id={r.rule_id} /> Use <strong>{r.use}</strong> instead of <strong>{r.instead_of}</strong>
-          </li>
-        ))}
-      </Section>
-
-      <Section id="banned" title="Banned or discouraged terms">
-        {g.banned_terms.map((r) => (
-          <li key={r.rule_id} className={item}>
-            <RuleId id={r.rule_id} /> <strong>{r.term}</strong>: {r.reason}
-          </li>
-        ))}
-      </Section>
-
-      <Section id="required" title="Required phrases and disclaimers">
-        {g.required_phrases.map((r) => (
-          <li key={r.rule_id} className={item}>
-            <RuleId id={r.rule_id} /> <strong>{r.phrase}</strong> ({r.when})
-          </li>
-        ))}
-      </Section>
-
-      <Section id="facts" title="Approved facts">
-        {g.facts.map((r) => (
-          <li key={r.rule_id} className="text-sm">
-            <div className={item}><RuleId id={r.rule_id} /> {r.text}</div>
-            <p className="mt-1 text-xs text-muted">
-              Source: {r.source} · {r.expires ? `Expires: ${r.expires}` : "No expiry set"}
-            </p>
-          </li>
-        ))}
-      </Section>
+      {isLive && data && <Live data={data} />}
     </div>
   );
 }

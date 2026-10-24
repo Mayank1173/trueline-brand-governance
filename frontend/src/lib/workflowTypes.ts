@@ -1,6 +1,6 @@
 import type { ReviewStatus } from "./types";
 
-export type ActorType = "ai" | "human";
+export type ActorType = "ai" | "human" | "system";
 export type ApprovalStatus = ReviewStatus | "rejected";
 
 export interface DraftSummary {
