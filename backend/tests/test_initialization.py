@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -117,27 +118,46 @@ def test_sqlite_initialization_is_repeatable_and_uses_migrations(tmp_path):
         database.dispose()
 
 
-def test_postgres_lock_uses_same_connection_and_releases_after_seed():
-    connection = MagicMock()
-    connection.dialect.name = "postgresql"
+class _PostgresTransactionConnection:
+    """Small transaction model for the PostgreSQL initialization path."""
+
+    def __init__(self):
+        self.dialect = SimpleNamespace(name="postgresql")
+        self.in_transaction = False
+        self.rolled_back_on_close = False
+        self.events: list[str] = []
+
+    def execute(self, statement, params):
+        sql = str(statement)
+        if "pg_advisory_lock" in sql and "unlock" not in sql:
+            self.in_transaction = True
+            self.events.append(f"lock:{params['lock_key']}")
+        elif "pg_advisory_unlock" in sql:
+            self.events.append(f"unlock:{params['lock_key']}")
+        return MagicMock()
+
+    def commit(self):
+        assert self.in_transaction is True
+        self.events.append("commit-lock-transaction")
+        self.in_transaction = False
+
+    def close(self):
+        if self.in_transaction:
+            self.rolled_back_on_close = True
+        self.events.append("close")
+
+
+def test_postgres_lock_transaction_is_committed_before_migrations_and_seed():
+    connection = _PostgresTransactionConnection()
     engine = MagicMock()
     engine.connect.return_value = connection
     database = MagicMock(engine=engine)
     settings = Settings(_env_file=None, database_url="postgresql+psycopg://redacted", seed_demo_data=True)
     events: list[str] = []
 
-    def execute(statement, params):
-        sql = str(statement)
-        if "pg_advisory_lock" in sql and "unlock" not in sql:
-            events.append(f"lock:{params['lock_key']}")
-        elif "pg_advisory_unlock" in sql:
-            events.append(f"unlock:{params['lock_key']}")
-        return MagicMock()
-
-    connection.execute.side_effect = execute
-
     def migrate(migration_connection):
         assert migration_connection is connection
+        assert migration_connection.in_transaction is False
         events.append("migrate")
 
     def seed(session):
@@ -147,9 +167,35 @@ def test_postgres_lock_uses_same_connection_and_releases_after_seed():
     initialize_database(database, settings, migration_runner=migrate, seed_runner=seed)
 
     assert events == [
-        f"lock:{MIGRATION_LOCK_KEY}",
         "migrate",
         "seed",
-        f"unlock:{MIGRATION_LOCK_KEY}",
     ]
-    connection.close.assert_called_once_with()
+    assert connection.events == [
+        f"lock:{MIGRATION_LOCK_KEY}",
+        "commit-lock-transaction",
+        f"unlock:{MIGRATION_LOCK_KEY}",
+        "close",
+    ]
+    assert connection.rolled_back_on_close is False
+
+
+def test_postgres_lock_is_released_when_migration_fails():
+    connection = _PostgresTransactionConnection()
+    engine = MagicMock()
+    engine.connect.return_value = connection
+    database = MagicMock(engine=engine)
+    settings = Settings(_env_file=None, database_url="postgresql+psycopg://redacted")
+
+    def migrate(_connection):
+        raise RuntimeError("migration failed")
+
+    with pytest.raises(RuntimeError, match="migration failed"):
+        initialize_database(database, settings, migration_runner=migrate)
+
+    assert connection.events == [
+        f"lock:{MIGRATION_LOCK_KEY}",
+        "commit-lock-transaction",
+        f"unlock:{MIGRATION_LOCK_KEY}",
+        "close",
+    ]
+    assert connection.rolled_back_on_close is False

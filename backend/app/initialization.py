@@ -68,6 +68,11 @@ def initialize_database(
         if is_postgres:
             _acquire_postgres_lock(connection)
             lock_acquired = True
+            # pg_advisory_lock is a session-level lock, but its SELECT starts
+            # SQLAlchemy's implicit transaction. End that transaction before
+            # Alembic starts its own migration transaction; closing the
+            # connection with it open would roll the migrations back.
+            connection.commit()
         migration_runner(connection)
         with Session(bind=connection) as session:
             if settings.seed_demo_data:
