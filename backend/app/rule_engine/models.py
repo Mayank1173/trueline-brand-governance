@@ -65,6 +65,7 @@ class FactDefinition:
     source_version: str | None
     valid_from: date | None = None
     valid_until: date | None = None
+    superseded_by: str | None = None
     is_active: bool = True
 
 

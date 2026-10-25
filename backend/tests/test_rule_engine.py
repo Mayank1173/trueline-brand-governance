@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
-
+from app.models import ApprovedFact
+from app.repositories import fact_to_definition
 from app.rule_engine import (
     FactDefinition,
     RuleConfigurationError,
@@ -204,6 +205,8 @@ def test_current_fact_is_not_flagged():
         statement="Battery lasts up to 10 hours.",
         source_label="Test fact library",
         source_version="v1",
+        valid_from=date(2025, 1, 1),
+        valid_until=date(2027, 1, 1),
     )
     assert (
         RuleEngine([], [fact]).review(
@@ -211,6 +214,89 @@ def test_current_fact_is_not_flagged():
         )
         == []
     )
+
+
+def test_superseded_fact_with_valid_dates_is_flagged():
+    replacement = FactDefinition(
+        id="FACT-TEST-REPLACEMENT",
+        statement="Replacement claim.",
+        source_label="Test fact library",
+        source_version="v2",
+        valid_from=date(2025, 1, 1),
+        valid_until=date(2027, 1, 1),
+    )
+    fact = FactDefinition(
+        id="FACT-TEST-3",
+        statement="Battery lasts up to 10 hours.",
+        source_label="Test fact library",
+        source_version="v1",
+        valid_from=date(2025, 1, 1),
+        valid_until=date(2027, 1, 1),
+        superseded_by="FACT-TEST-REPLACEMENT",
+    )
+    findings = RuleEngine([], [fact, replacement]).review(
+        "Battery lasts up to 10 hours.", evaluation_date=date(2026, 10, 23)
+    )
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.category == "fact_metadata"
+    assert finding.citation is not None
+    assert finding.citation.source_id == "FACT-TEST-3"
+    assert "superseded" in finding.explanation
+    assert finding.requires_human_review is True
+
+
+def test_superseded_fact_with_missing_target_is_flagged():
+    fact = FactDefinition(
+        id="FACT-TEST-MISSING-TARGET",
+        statement="Legacy beta access is included.",
+        source_label="Test fact library",
+        source_version="v1",
+        valid_from=date(2025, 1, 1),
+        valid_until=date(2027, 1, 1),
+        superseded_by="FACT-TEST-NOT-PRESENT",
+    )
+    findings = RuleEngine([], [fact]).review(
+        "Legacy beta access is included.", evaluation_date=date(2026, 10, 23)
+    )
+    assert len(findings) == 1
+    assert findings[0].citation is not None
+    assert findings[0].citation.source_id == "FACT-TEST-MISSING-TARGET"
+
+
+def test_not_yet_valid_fact_is_flagged_with_fact_citation():
+    fact = FactDefinition(
+        id="FACT-TEST-4",
+        statement="Holiday pricing starts in January.",
+        source_label="Test fact library",
+        source_version="v1",
+        valid_from=date(2027, 1, 1),
+    )
+    findings = RuleEngine([], [fact]).review(
+        "Holiday pricing starts in January.", evaluation_date=date(2026, 10, 23)
+    )
+    assert len(findings) == 1
+    assert findings[0].category == "fact_metadata"
+    assert findings[0].citation is not None
+    assert findings[0].citation.source_id == "FACT-TEST-4"
+
+
+def test_fact_conversion_preserves_supersession():
+    row = ApprovedFact(
+        id="FACT-TEST-CONVERSION",
+        brand_id="brand_001",
+        statement="Converted claim.",
+        source_label="Test fact library",
+        source_version="v1",
+        valid_from=date(2025, 1, 1),
+        valid_until=date(2027, 1, 1),
+        superseded_by="FACT-TEST-REPLACEMENT",
+        is_active=True,
+    )
+
+    definition = fact_to_definition(row)
+
+    assert definition.superseded_by == "FACT-TEST-REPLACEMENT"
 
 
 def test_engine_is_repeatable_and_deterministically_ordered():

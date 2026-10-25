@@ -356,13 +356,16 @@ def _clamp_confidence(value: float) -> float:
 
 def _fact_is_current(fact: FactDefinition, today: date) -> bool:
     return not (
-        (fact.valid_from and today < fact.valid_from)
+        fact.superseded_by
+        or (fact.valid_from and today < fact.valid_from)
         or (fact.valid_until and today > fact.valid_until)
     )
 
 
 def _validity_text(fact: FactDefinition) -> str:
     parts: list[str] = []
+    if fact.superseded_by:
+        parts.append("superseded")
     if fact.valid_from:
         parts.append(f"valid from {fact.valid_from.isoformat()}")
     if fact.valid_until:

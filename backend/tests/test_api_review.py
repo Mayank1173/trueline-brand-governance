@@ -148,6 +148,38 @@ def test_current_approved_fact_is_not_flagged(client):
     assert response.json()["findings"] == []
 
 
+def test_superseded_fact_with_missing_target_is_flagged(client):
+    with client.app.state.db.session_factory() as session:
+        session.add(
+            ApprovedFact(
+                id="FACT-B1-SUPERSEDED-001",
+                brand_id="brand_001",
+                statement="Legacy priority support is included.",
+                source_label="Supersession illustration",
+                source_version="v1",
+                valid_from=date(2000, 1, 1),
+                valid_until=date(2099, 1, 1),
+                superseded_by="FACT-B1-MISSING-001",
+                is_active=True,
+            )
+        )
+        session.commit()
+
+    response = review(
+        client, "Legacy priority support is included. Terms apply."
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "needs_human_review"
+    findings = [f for f in body["findings"] if f["category"] == "fact_metadata"]
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding["citation"]["source_type"] == "approved_fact"
+    assert finding["citation"]["source_id"] == "FACT-B1-SUPERSEDED-001"
+    assert "superseded" in finding["explanation"]
+    assert finding["requires_human_review"] is True
+
+
 def test_unversioned_guideline_returns_null_source_version(client):
     with client.app.state.db.session_factory() as session:
         session.add(

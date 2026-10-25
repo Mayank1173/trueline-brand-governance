@@ -87,6 +87,7 @@ def fact_to_definition(fact: ApprovedFact) -> FactDefinition:
         source_version=fact.source_version,
         valid_from=fact.valid_from,
         valid_until=fact.valid_until,
+        superseded_by=fact.superseded_by,
         is_active=fact.is_active,
     )
 
