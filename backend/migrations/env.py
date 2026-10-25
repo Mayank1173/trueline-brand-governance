@@ -32,6 +32,18 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    existing_connection = config.attributes.get("connection")
+    if existing_connection is not None:
+        context.configure(
+            connection=existing_connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            render_as_batch=database_url.startswith("sqlite"),
+        )
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
     connectable = create_engine(database_url, pool_pre_ping=True)
     with connectable.connect() as connection:
         context.configure(
