@@ -20,7 +20,7 @@ it. Humans make the final publication decision.
 
 ## Quick start (backend)
 
-Requires Python 3.10 or newer.
+Requires Python 3.10 or newer; the optional AI package requires Python 3.11+.
 
 ```powershell
 cd backend
@@ -41,11 +41,13 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/review `
 
 Full setup, configuration, testing, migration, and deployment details are in
 [`backend/README.md`](backend/README.md). The request/response contract is in
-[`docs/api-contracts.md`](docs/api-contracts.md).
+[`docs/api-contracts.md`](docs/api-contracts.md); frontend AI-field guidance is in
+[`docs/ai-integration.md`](docs/ai-integration.md).
 
 ## Current scope and honesty notes
 
 - The rule engine is **deterministic** and runs without an AI service or API key.
+  The optional AI layer is additive and is skipped for computed-only rule sets.
 - Demo brands, guidelines, and facts are **illustrative** and are not official
   Trueline policy. See `backend/app/seed_data.py`.
 - No authentication, authorization, or multi-tenant isolation is implemented.
@@ -53,3 +55,30 @@ Full setup, configuration, testing, migration, and deployment details are in
   locally. Migrations are written to be PostgreSQL-compatible.
 - The frontend is unchanged. To connect it, set `NEXT_PUBLIC_USE_MOCK=false`
   and `NEXT_PUBLIC_API_URL=http://localhost:8000`.
+
+## AI review engine (`backend/trueline/`)
+
+The optional AI review engine adds provider-backed findings on top of the
+deterministic backend rule engine. It is disabled by default and never replaces
+the deterministic checks. Enable it only when both `TRUELINE_AI_ENABLED=true`
+and a non-empty `ANTHROPIC_API_KEY` are set. Guidelines marked `ai` require the
+AI layer; `hybrid` guidelines run deterministically and are also reviewed by AI.
+
+- `backend/trueline/review/` - review orchestration and deterministic checks
+- `backend/trueline/providers/` - swappable AI provider interface
+- `backend/trueline/adapters/fastapi_adapter.py` - conversion to the API contract
+- `backend/trueline/eval.py` - Northstar evaluation harness
+
+Run the AI-engine tests and evaluation from the repository root:
+
+```powershell
+python -m pytest tests -q
+python -m trueline.eval --output-dir eval_results
+```
+
+The backend keeps final approval with a human. AI findings without a valid
+citation are never surfaced, and no citation metadata is fabricated. Each
+review reports `ai_status` and `ai_error`. If AI is disabled, not configured,
+unavailable, times out, or returns ungrounded findings, deterministic results
+remain and the review is marked `needs_human_review`. No third-party API call is
+made by the test suite or by the default demo seed.

@@ -237,4 +237,4 @@ The human-judgment subsection must not be merged into the automated totals. If a
 - **Data:** None. No labeled dataset exists yet.
 - **Execution:** None. No test runs performed.
 - **Results:** None. Every metric value is **PENDING**. Do not replace `PENDING` with a number until the number comes from an executed run with a recorded dataset, engine, ruleset, and facts-library version.
-- 
+-
