@@ -1,0 +1,2819 @@
+{
+  "schema_version": "1.0.0",
+  "dataset_id": "northstar-eval-v0.1",
+  "guidelines_file": "data/northstar-brand-guidelines.json",
+  "drafts_file": "data/sample-drafts.json",
+  "is_fictional": true,
+  "fictional_notice": "FICTIONAL TEST DATA — NOT A REAL COMPANY. Northstar Planner is an invented brand. Every name, product, price, policy, owner role, and fact in this pack is invented for software testing and describes no real company, product, or person. Do not publish this content or present it as real.",
+  "evaluation_as_of_date": "2026-10-23",
+  "spec": {
+    "version": "0.1.0",
+    "purpose": "A fictional, text-only evaluation dataset for checking a brand-guideline review tool against expected findings.",
+    "evaluation_date_rule": "All fact status, expiry, supersession, and offer tests use the fixed evaluation_as_of_date 2026-10-23. Test code must never read the system clock to decide whether a fact is active, expired, or superseded.",
+    "field_definitions": {
+      "schema_version": "Version of this dataset schema.",
+      "dataset_id": "Stable identifier for this evaluation dataset.",
+      "guidelines_file": "Repository-relative path to the guideline pack used for citations and expected IDs.",
+      "drafts_file": "Repository-relative path to the draft source used for draft and revised-draft cases.",
+      "is_fictional": "True when every brand, product, person, price, and policy in the dataset is invented.",
+      "fictional_notice": "Plain-language notice that the dataset is fictional and must not be published as real.",
+      "evaluation_as_of_date": "Fixed date used for all fact and offer status decisions.",
+      "spec": "This object: field definitions, enums, matching rules, and metric definitions.",
+      "snippets": "Array of 17 short inputs. Each snippet has id, channel, headline (string or null), and text. Expected findings live on test_cases, not here.",
+      "test_cases": "Ordered array of 54 cases. IDs run from NS-TC-001 to NS-TC-054.",
+      "test_case.id": "Unique test case ID, zero-padded to three digits.",
+      "test_case.case_type": "One of the case_type enum values.",
+      "test_case.input": "The input that must be run once.",
+      "test_case.input.type": "One of draft, revised_draft, or snippet.",
+      "test_case.input.id": "Draft ID for draft inputs, or snippet ID for snippet inputs.",
+      "test_case.input.text_source": "For draft and revised_draft inputs: file, draft_id, and field. For snippet inputs: snippet_id. The runner loads the text from the source, never by retyping it.",
+      "test_case.target_finding_id": "For draft-derived cases, the matching expected finding ID from sample-drafts.json. For snippet-derived cases, a synthetic ID of the form NS-SNIP-NN-FN. Null for no-finding cases.",
+      "test_case.expected": "Expected result object for this case.",
+      "test_case.expected.outcome": "One of finding, no_finding, or needs_human_judgement.",
+      "test_case.expected.rule_or_fact_id": "Primary expected rule or fact ID, or null for a no-finding case.",
+      "test_case.expected.acceptable_alternate_ids": "Alternate guideline IDs that also count as a correct citation for this case.",
+      "test_case.expected.finding_type": "Plain finding-type label, or null for a no-finding case.",
+      "test_case.expected.span_text": "Exact expected span, or null for a no-finding case.",
+      "test_case.expected.start": "Inclusive Unicode code-point offset of the expected span, or null.",
+      "test_case.expected.end": "Exclusive Unicode code-point offset of the expected span, or null.",
+      "test_case.expected.expected_finding": "One plain sentence describing the expected finding, or null.",
+      "test_case.expected.citation": "Source document ID and section, looked up from the guidelines file for the primary expected ID, or null for a no-finding case.",
+      "test_case.expected.severity": "One of low, medium, or high, or null for a no-finding case.",
+      "test_case.expected.label": "Expected label enum value, or null for a no-finding case.",
+      "test_case.expected.suggested_fix": "Expected suggested fix copied from source for draft cases or written for snippet cases, or null.",
+      "test_case.expected.human_review_required": "Boolean or null for a no-finding case.",
+      "test_case.expected.acceptable_alternative_outcomes": "Optional list of other acceptable outcomes. Each item has outcome, rule_or_fact_id, and reason. Only snippet 01 uses this field, for needs_human_judgement on NS-NAME-001.",
+      "test_case.notes": "Short plain-language note for the runner or reviewer.",
+      "coverage": "Computed lists of guideline IDs that appear in at least one test case, with counts per case_type. Counts include primary IDs, acceptable alternates, and acceptable alternative outcomes.",
+      "known_coverage_gaps": "Computed list of rule and fact IDs not covered by any positive case, each with an honest reason.",
+      "results_template": "One empty record per test case. Every field is null except test_case_id and the status value not_run."
+    },
+    "enums": {
+      "case_type": [
+        "positive",
+        "negative",
+        "edge",
+        "ambiguous"
+      ],
+      "outcome": [
+        "finding",
+        "no_finding",
+        "needs_human_judgement"
+      ],
+      "label": [
+        "violation",
+        "needs_human_judgement",
+        "unsupported",
+        "contradicted",
+        "outdated"
+      ],
+      "severity": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "check_method": [
+        "computed",
+        "ai",
+        "hybrid"
+      ],
+      "span_offset_unit": "unicode_code_points"
+    },
+    "matching_rules": {
+      "summary": "A returned finding matches an expected finding only when the cited ID, span overlap, and one-to-one conditions all hold.",
+      "conditions": [
+        "The returned finding's cited ID equals expected.rule_or_fact_id or appears in expected.acceptable_alternate_ids.",
+        "The returned finding's span overlaps the expected span by at least 50% of the expected span's characters. Overlap is max(0, min(returned_end, expected_end) - max(returned_start, expected_start)); the threshold is 0.5 * (expected_end - expected_start).",
+        "Matching is one-to-one: each returned finding may match at most one expected finding, and each expected finding may be matched by at most one returned finding. Use an assignment that maximizes valid matches and break ties deterministically.",
+        "Returned findings that match nothing are false positives, including extra findings on negative or edge inputs."
+      ],
+      "proposal_note": "These matching rules are a proposal. Confirm them against docs/api-contracts.md before relying on any score."
+    },
+    "metrics": [
+      {
+        "name": "Finding precision",
+        "formula_words": "True positives divided by true positives plus false positives.",
+        "formula_symbols": "TP / (TP + FP)",
+        "unit": "ratio from 0 to 1",
+        "what_is_counted": "TP is returned findings matched one-to-one to an expected finding. FP is returned findings that match no expected finding, including any finding raised on a negative or edge input.",
+        "breakdowns": "Overall; by the cited rule or fact category from the guidelines file; and by check_method (computed, ai, hybrid).",
+        "status": "not_run"
+      },
+      {
+        "name": "Finding recall",
+        "formula_words": "True positives divided by true positives plus false negatives.",
+        "formula_symbols": "TP / (TP + FN)",
+        "unit": "ratio from 0 to 1",
+        "what_is_counted": "TP is returned findings matched one-to-one to an expected finding. FN is expected findings with no match.",
+        "breakdowns": "Overall; by the cited rule or fact category from the guidelines file; and by check_method (computed, ai, hybrid).",
+        "status": "not_run"
+      },
+      {
+        "name": "Finding F1",
+        "formula_words": "Two times precision times recall, divided by precision plus recall.",
+        "formula_symbols": "2PR / (P + R)",
+        "unit": "ratio from 0 to 1",
+        "what_is_counted": "P is finding precision and R is finding recall. Report the same overall, category, and check_method breakdowns as precision and recall.",
+        "breakdowns": "Overall; by the cited rule or fact category from the guidelines file; and by check_method (computed, ai, hybrid).",
+        "status": "not_run"
+      },
+      {
+        "name": "Citation validity rate",
+        "formula_words": "Returned findings whose cited ID exists in the guidelines file and whose cited text a human reviewer judges to support the finding, divided by all returned findings.",
+        "formula_symbols": "(ID_exists AND human_support) / returned_findings",
+        "unit": "ratio from 0 to 1",
+        "what_is_counted": "ID_exists is 1 when the cited ID is present in the guidelines file. Human_support is 1 when a reviewer judges the cited text to support the finding, otherwise 0. Score both parts for every returned finding. Report the automated part separately from the human-judged part.",
+        "components": [
+          {
+            "name": "Automated ID-exists rate",
+            "formula_words": "Returned findings whose cited ID exists in the guidelines file divided by all returned findings.",
+            "formula_symbols": "ID_exists / returned_findings",
+            "unit": "ratio from 0 to 1",
+            "what_is_counted": "The automated check only; it does not judge whether the cited text supports the finding.",
+            "status": "not_run"
+          },
+          {
+            "name": "Human-judged citation support rate",
+            "formula_words": "Returned findings whose cited text a human reviewer judges to support the finding divided by all returned findings.",
+            "formula_symbols": "human_support / returned_findings",
+            "unit": "ratio from 0 to 1",
+            "what_is_counted": "The reviewer scores support as 0 or 1 for each returned finding.",
+            "status": "not_run"
+          }
+        ],
+        "notes": "100% is the plan's target, not a result. Report the automated and human parts separately.",
+        "status": "not_run"
+      },
+      {
+        "name": "Correct severity rate",
+        "formula_words": "Among true-positive findings, the share whose returned severity equals the expected severity.",
+        "formula_symbols": "TP_exact_severity / TP",
+        "unit": "ratio from 0 to 1",
+        "what_is_counted": "Only findings already matched as true positives are scored.",
+        "components": [
+          {
+            "name": "Severity within one level",
+            "formula_words": "Among true-positive findings, the share whose returned severity is within one level of the expected severity.",
+            "formula_symbols": "TP_within_one_level / TP",
+            "unit": "ratio from 0 to 1",
+            "what_is_counted": "Severity order is low < medium < high. One level means the same level or an adjacent level.",
+            "status": "not_run"
+          }
+        ],
+        "status": "not_run"
+      },
+      {
+        "name": "Suggested-fix usefulness",
+        "formula_words": "Sum of reviewer usefulness scores divided by two times the number of true-positive findings.",
+        "formula_symbols": "sum(score_f) / (2 * TP)",
+        "unit": "ratio from 0 to 1",
+        "what_is_counted": "Each true-positive finding receives a reviewer score: 0 = missing, wrong, or changes the meaning; 1 = points in the right direction but incomplete; 2 = usable as written, fixes the issue, keeps the creator's meaning, and introduces no new violation.",
+        "components": [
+          {
+            "name": "Fix re-check pass rate",
+            "formula_words": "Share of true-positive fixes that, once applied, raise no finding for the same rule.",
+            "formula_symbols": "fixes_recheck_pass / TP",
+            "unit": "ratio from 0 to 1",
+            "what_is_counted": "Automated re-check of the applied fix for the same rule only.",
+            "status": "not_run"
+          }
+        ],
+        "status": "not_run"
+      },
+      {
+        "name": "False-positive rate on compliant inputs",
+        "formula_words": "Number of compliant inputs with at least one returned finding divided by the number of compliant inputs.",
+        "formula_symbols": "compliant_inputs_with_a_finding / compliant_inputs",
+        "unit": "ratio from 0 to 1",
+        "what_is_counted": "Compliant inputs are the negative and edge test cases. A near-expiry notice to a fact owner is not a finding.",
+        "components": [
+          {
+            "name": "Returned findings per compliant input",
+            "formula_words": "Total returned findings on compliant inputs divided by the number of compliant inputs.",
+            "formula_symbols": "returned_findings_on_compliant_inputs / compliant_inputs",
+            "unit": "findings per input",
+            "what_is_counted": "All returned findings on negative and edge inputs, including duplicate rule hits.",
+            "status": "not_run"
+          }
+        ],
+        "status": "not_run"
+      },
+      {
+        "name": "Ambiguity handling rate",
+        "formula_words": "Among ambiguous cases, the share where the tool returns needs_human_judgement or an explicitly low confidence instead of a confident violation.",
+        "formula_symbols": "ambiguous_cases_handled / ambiguous_cases",
+        "unit": "ratio from 0 to 1",
+        "what_is_counted": "Ambiguous cases are the test cases with case_type ambiguous.",
+        "status": "not_run"
+      },
+      {
+        "name": "High-severity recall",
+        "formula_words": "Recall computed over expected findings whose severity is high.",
+        "formula_symbols": "TP_high / (TP_high + FN_high)",
+        "unit": "ratio from 0 to 1",
+        "what_is_counted": "Only expected findings with severity high are included in the denominator and numerator.",
+        "status": "not_run"
+      }
+    ],
+    "metrics_note": "No scores have been measured. All results fields stay null until the tests are actually run."
+  },
+  "snippets": [
+    {
+      "id": "NS-SNIP-01",
+      "channel": "email_marketing",
+      "headline": null,
+      "text": "Follow the North Star when you set quarterly goals. Northstar Planner keeps your goals in view."
+    },
+    {
+      "id": "NS-SNIP-02",
+      "channel": "website_copy",
+      "headline": null,
+      "text": "Clear owners give your team more leverage over deadlines."
+    },
+    {
+      "id": "NS-SNIP-03",
+      "channel": "website_copy",
+      "headline": null,
+      "text": "Focus Boards are here! Give every task an owner."
+    },
+    {
+      "id": "NS-SNIP-04",
+      "channel": "social_post",
+      "headline": null,
+      "text": "Plan your week with Focus Boards 📅 #planning #teamwork"
+    },
+    {
+      "id": "NS-SNIP-05",
+      "channel": "product_update_email",
+      "headline": "Plan your team's week with Focus Boards, one task at a time.",
+      "text": "Plan your team's week with Focus Boards, one task at a time."
+    },
+    {
+      "id": "NS-SNIP-06",
+      "channel": "pricing_page",
+      "headline": null,
+      "text": "Starter is free for up to 5 team members."
+    },
+    {
+      "id": "NS-SNIP-07",
+      "channel": "email_marketing",
+      "headline": null,
+      "text": "Don't miss out: act now and upgrade your plan today."
+    },
+    {
+      "id": "NS-SNIP-08",
+      "channel": "website_copy",
+      "headline": null,
+      "text": "Try our kanban boards and Gantt view today."
+    },
+    {
+      "id": "NS-SNIP-09",
+      "channel": "pricing_page",
+      "headline": null,
+      "text": "Choose the package that fits your team."
+    },
+    {
+      "id": "NS-SNIP-10",
+      "channel": "product_update_email",
+      "headline": "Plan Your Week With Focus Boards",
+      "text": "Plan Your Week With Focus Boards"
+    },
+    {
+      "id": "NS-SNIP-11",
+      "channel": "website_copy",
+      "headline": null,
+      "text": "This page was last reviewed on 15/10/2026."
+    },
+    {
+      "id": "NS-SNIP-12",
+      "channel": "pricing_page",
+      "headline": null,
+      "text": "The Team plan is $12/mo for each team member, billed annually. Prices exclude applicable taxes."
+    },
+    {
+      "id": "NS-SNIP-13",
+      "channel": "product_update_email",
+      "headline": "Plan your team's week with Focus Boards, each task at a time.",
+      "text": "Plan your team's week with Focus Boards, each task at a time."
+    },
+    {
+      "id": "NS-SNIP-14",
+      "channel": "landing_page",
+      "headline": null,
+      "text": "Northstar Planner is simpler than other planning apps."
+    },
+    {
+      "id": "NS-SNIP-15",
+      "channel": "product_update_email",
+      "headline": null,
+      "text": "Assist Suggestions can propose next steps for your tasks."
+    },
+    {
+      "id": "NS-SNIP-16",
+      "channel": "website_copy",
+      "headline": null,
+      "text": "Assist Suggestions is available to everyone."
+    },
+    {
+      "id": "NS-SNIP-17",
+      "channel": "website_copy",
+      "headline": null,
+      "text": "Northstar Planner has strong security."
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "NS-TC-001",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-01",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-01",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-01-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-BAN-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "banned_term",
+        "span_text": "revolutionary",
+        "start": 23,
+        "end": 36,
+        "expected_finding": "\"Revolutionary\" is a banned hype word in the Northstar guideline pack.",
+        "citation": "NS-DOC-EDITORIAL section 5.1 Banned hype words",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Replace it with a plain description of what the product helps the team do.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-01 expected finding NS-DRAFT-01-F1."
+    },
+    {
+      "id": "NS-TC-002",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-01",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-01",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-01-F2",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-BAN-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "banned_term",
+        "span_text": "game-changing",
+        "start": 38,
+        "end": 51,
+        "expected_finding": "\"Game-changing\" is also a banned hype word and adds no concrete information.",
+        "citation": "NS-DOC-EDITORIAL section 5.1 Banned hype words",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Remove it and describe the benefit directly.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-01 expected finding NS-DRAFT-01-F2."
+    },
+    {
+      "id": "NS-TC-003",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-01",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-01",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-01-F3",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-TERM-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "preferred_term",
+        "span_text": "users",
+        "start": 65,
+        "end": 70,
+        "expected_finding": "The preferred term is \"team members\" in customer-facing copy.",
+        "citation": "NS-DOC-NAMING section 4.1 People",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Replace \"users\" with \"team members\".",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-01 expected finding NS-DRAFT-01-F3."
+    },
+    {
+      "id": "NS-TC-004",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-01",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-01",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-01-F4",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-BAN-002",
+        "acceptable_alternate_ids": [],
+        "finding_type": "discouraged_term",
+        "span_text": "synergy",
+        "start": 85,
+        "end": 92,
+        "expected_finding": "\"Synergy\" is discouraged jargon and makes the sentence less clear.",
+        "citation": "NS-DOC-EDITORIAL section 5.2 Discouraged jargon",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Replace it with a plain description such as \"plan work together\".",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-01 expected finding NS-DRAFT-01-F4."
+    },
+    {
+      "id": "NS-TC-005",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-02",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-02",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-02-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-TONE-003",
+        "acceptable_alternate_ids": [],
+        "finding_type": "serious_notice_violation",
+        "span_text": "Oops! 😬 We had a teeny-tiny whoopsie with sign-in this morning, lol.",
+        "start": 0,
+        "end": 68,
+        "expected_finding": "The opening uses humour, slang, and an emoji in a serious sign-in notice, and it does not clearly state what happened, who was affected, or what was done.",
+        "citation": "NS-DOC-VOICE section 2.3 Serious notices",
+        "severity": "high",
+        "label": "violation",
+        "suggested_fix": "Rewrite as a factual notice with the time window, affected group, and resolution, without jokes or emoji.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-02 expected finding NS-DRAFT-02-F1."
+    },
+    {
+      "id": "NS-TC-006",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-02",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-02",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-02-F2",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-TONE-003",
+        "acceptable_alternate_ids": [],
+        "finding_type": "vague_serious_notice",
+        "span_text": "Some of you couldn't log in for a bit.",
+        "start": 69,
+        "end": 107,
+        "expected_finding": "This sentence is vague about who was affected and for how long, so readers cannot tell the scope of the incident.",
+        "citation": "NS-DOC-VOICE section 2.3 Serious notices",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Name the affected group and the time window, and state that the issue is fixed.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-02 expected finding NS-DRAFT-02-F2."
+    },
+    {
+      "id": "NS-TC-007",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-03",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-03",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-03-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-REQ-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "missing_required_wording",
+        "span_text": "$12 per team member per month, billed annually",
+        "start": 47,
+        "end": 93,
+        "expected_finding": "The post states a price but omits the required sentence \"Prices exclude applicable taxes.\"",
+        "citation": "NS-DOC-EDITORIAL section 6.1 Price disclosure",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Add the exact sentence after the price: \"Prices exclude applicable taxes.\"",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-03 expected finding NS-DRAFT-03-F1."
+    },
+    {
+      "id": "NS-TC-008",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-04",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-04",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-04-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-CLAIM-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "unsupported_claim",
+        "span_text": "the fastest planning tool on the market",
+        "start": 21,
+        "end": 60,
+        "expected_finding": "The superlative \"fastest ... on the market\" is an unsupported market-position claim; no approved fact supports it.",
+        "citation": "NS-DOC-CLAIMS section 3.1 Superlatives",
+        "severity": "high",
+        "label": "unsupported",
+        "suggested_fix": "Remove the ranking and describe the planning benefit in plain language.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-04 expected finding NS-DRAFT-04-F1."
+    },
+    {
+      "id": "NS-TC-009",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-04",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-04",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-04-F2",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-CLAIM-002",
+        "acceptable_alternate_ids": [],
+        "finding_type": "unsupported_claim",
+        "span_text": "Teams using Northstar Planner save 10 hours every week.",
+        "start": 62,
+        "end": 117,
+        "expected_finding": "The \"10 hours every week\" claim is a numeric productivity claim with no approved fact behind it.",
+        "citation": "NS-DOC-CLAIMS section 3.2 Performance claims",
+        "severity": "high",
+        "label": "unsupported",
+        "suggested_fix": "Remove the number and describe the task the product supports instead.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-04 expected finding NS-DRAFT-04-F2."
+    },
+    {
+      "id": "NS-TC-010",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-05",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-05",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-05-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FACT-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "contradicted_fact",
+        "span_text": "up to 10 team members",
+        "start": 20,
+        "end": 41,
+        "expected_finding": "The Starter plan supports up to 5 team members, not 10, so this contradicts active fact NS-FACT-001.",
+        "citation": "NS-DOC-PRICING section 2.1 Starter plan",
+        "severity": "high",
+        "label": "contradicted",
+        "suggested_fix": "Change \"10\" to \"5\".",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-05 expected finding NS-DRAFT-05-F1."
+    },
+    {
+      "id": "NS-TC-011",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-05",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-05",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-05-F2",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FACT-008",
+        "acceptable_alternate_ids": [],
+        "finding_type": "contradicted_fact",
+        "span_text": "Every Starter workspace also includes Team Timeline.",
+        "start": 43,
+        "end": 95,
+        "expected_finding": "Team Timeline is on the Team plan only and is not included in Starter, so this contradicts active fact NS-FACT-008.",
+        "citation": "NS-DOC-PRODUCT section 4.3 Team Timeline",
+        "severity": "high",
+        "label": "contradicted",
+        "suggested_fix": "Remove the Starter claim and state that Team Timeline is available on the Team plan.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-05 expected finding NS-DRAFT-05-F2."
+    },
+    {
+      "id": "NS-TC-012",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-06",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-06",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-06-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FACT-010",
+        "acceptable_alternate_ids": [
+          "NS-FACT-002"
+        ],
+        "finding_type": "superseded_fact",
+        "span_text": "$10 per team member per month",
+        "start": 15,
+        "end": 44,
+        "expected_finding": "The $10 price is the old Team plan price; NS-FACT-010 was superseded by NS-FACT-002, which sets the current price at $12.",
+        "citation": "NS-DOC-PRICING section 2.4 Historical pricing",
+        "severity": "high",
+        "label": "outdated",
+        "suggested_fix": "Replace \"$10\" with \"$12\" and refer to NS-FACT-002.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-06 expected finding NS-DRAFT-06-F1."
+    },
+    {
+      "id": "NS-TC-013",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-06",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-06",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-06-F2",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FACT-003",
+        "acceptable_alternate_ids": [],
+        "finding_type": "expired_fact",
+        "span_text": "Save 20% until 30 September 2026.",
+        "start": 63,
+        "end": 96,
+        "expected_finding": "The 20% launch offer ended on 30 September 2026, before the fixed evaluation date of 23 October 2026, so it must not be presented as current.",
+        "citation": "NS-DOC-PRICING section 2.3 Launch offer",
+        "severity": "high",
+        "label": "outdated",
+        "suggested_fix": "Remove the expired offer, or clearly mark it as historical if it is needed for context.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-06 expected finding NS-DRAFT-06-F2."
+    },
+    {
+      "id": "NS-TC-014",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-07",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-07",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-07-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-NAME-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "naming_inconsistency",
+        "span_text": "North Star Planner",
+        "start": 5,
+        "end": 23,
+        "expected_finding": "The product name is written as \"North Star Planner\"; the approved name is \"Northstar Planner\".",
+        "citation": "NS-DOC-NAMING section 3.1 Product name",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Use \"Northstar Planner\".",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-07 expected finding NS-DRAFT-07-F1."
+    },
+    {
+      "id": "NS-TC-015",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-07",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-07",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-07-F2",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-NAME-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "naming_inconsistency",
+        "span_text": "NorthStar",
+        "start": 96,
+        "end": 105,
+        "expected_finding": "The brand is written as \"NorthStar\"; the approved form is \"Northstar\".",
+        "citation": "NS-DOC-NAMING section 3.1 Product name",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Use \"Northstar\" or \"Northstar Planner\".",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-07 expected finding NS-DRAFT-07-F2."
+    },
+    {
+      "id": "NS-TC-016",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-07",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-07",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-07-F3",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-NAME-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "naming_inconsistency",
+        "span_text": "Planner Pro",
+        "start": 158,
+        "end": 169,
+        "expected_finding": "The product is called \"Planner Pro\", which is not an approved product name.",
+        "citation": "NS-DOC-NAMING section 3.1 Product name",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Replace it with \"Northstar Planner\".",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-07 expected finding NS-DRAFT-07-F3."
+    },
+    {
+      "id": "NS-TC-017",
+      "case_type": "ambiguous",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-08",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-08",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-08-F1",
+      "expected": {
+        "outcome": "needs_human_judgement",
+        "rule_or_fact_id": "NS-FACT-006",
+        "acceptable_alternate_ids": [],
+        "finding_type": "ambiguous_wording",
+        "span_text": "works with your calendar",
+        "start": 18,
+        "end": 42,
+        "expected_finding": "The phrase \"works with your calendar\" is vague and could imply support for calendars that do not use the iCal (.ics) standard.",
+        "citation": "NS-DOC-PRODUCT section 4.1 Calendar Sync",
+        "severity": "medium",
+        "label": "needs_human_judgement",
+        "suggested_fix": "Use the approved wording: \"Calendar Sync works with calendars that support the iCal (.ics) standard.\"",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-08 expected finding NS-DRAFT-08-F1."
+    },
+    {
+      "id": "NS-TC-018",
+      "case_type": "ambiguous",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-08",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-08",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-08-F2",
+      "expected": {
+        "outcome": "needs_human_judgement",
+        "rule_or_fact_id": "NS-CLAIM-006",
+        "acceptable_alternate_ids": [
+          "NS-FACT-007"
+        ],
+        "finding_type": "ambiguous_wording",
+        "span_text": "will soon be available everywhere",
+        "start": 47,
+        "end": 80,
+        "expected_finding": "\"Will soon be available everywhere\" implies a release timeline and platform availability that no approved fact supports; Android is not yet available and no date is announced.",
+        "citation": "NS-DOC-CLAIMS section 3.6 Roadmap and availability",
+        "severity": "medium",
+        "label": "needs_human_judgement",
+        "suggested_fix": "State the current platforms only, or mark the future plan for human review with no promised date.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-08 expected finding NS-DRAFT-08-F2."
+    },
+    {
+      "id": "NS-TC-019",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-09",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-09",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-09-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FMT-004",
+        "acceptable_alternate_ids": [],
+        "finding_type": "formatting_violation",
+        "span_text": "🚀🚀",
+        "start": 0,
+        "end": 2,
+        "expected_finding": "The post uses two emoji, exceeding the limit of one emoji per social post.",
+        "citation": "NS-DOC-EDITORIAL section 7.4 Social posts",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Keep at most one emoji, or remove them.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-09 expected finding NS-DRAFT-09-F1."
+    },
+    {
+      "id": "NS-TC-020",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-09",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-09",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-09-F2",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-TONE-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "tone_violation",
+        "span_text": "HUGE NEWS!!!",
+        "start": 3,
+        "end": 15,
+        "expected_finding": "The headline uses all caps and three exclamation marks, breaking the calm-voice limit.",
+        "citation": "NS-DOC-VOICE section 2.1 Calm voice",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Rewrite in sentence case with no more than one exclamation mark across the piece.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-09 expected finding NS-DRAFT-09-F2."
+    },
+    {
+      "id": "NS-TC-021",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-09",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-09",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-09-F3",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-NAME-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "naming_inconsistency",
+        "span_text": "Planner Pro",
+        "start": 16,
+        "end": 27,
+        "expected_finding": "The product is called \"Planner Pro\", which is not an approved name.",
+        "citation": "NS-DOC-NAMING section 3.1 Product name",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Use \"Northstar Planner\".",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-09 expected finding NS-DRAFT-09-F3."
+    },
+    {
+      "id": "NS-TC-022",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-09",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-09",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-09-F4",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FACT-007",
+        "acceptable_alternate_ids": [],
+        "finding_type": "contradicted_fact",
+        "span_text": "is now on Android",
+        "start": 28,
+        "end": 45,
+        "expected_finding": "Android is not yet available, and no release date has been announced, so this contradicts active fact NS-FACT-007.",
+        "citation": "NS-DOC-PRODUCT section 4.2 Platforms",
+        "severity": "high",
+        "label": "contradicted",
+        "suggested_fix": "Remove the Android claim or state clearly that Android is not yet available.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-09 expected finding NS-DRAFT-09-F4."
+    },
+    {
+      "id": "NS-TC-023",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-09",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-09",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-09-F5",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-CLAIM-003",
+        "acceptable_alternate_ids": [],
+        "finding_type": "unsupported_claim",
+        "span_text": "100% secure",
+        "start": 47,
+        "end": 58,
+        "expected_finding": "This is an absolute security claim with no approved fact behind it; the approved wording only says customer data is encrypted in transit and at rest.",
+        "citation": "NS-DOC-CLAIMS section 3.3 Security and uptime",
+        "severity": "high",
+        "label": "unsupported",
+        "suggested_fix": "Replace it with the approved encryption fact, without absolutes.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-09 expected finding NS-DRAFT-09-F5."
+    },
+    {
+      "id": "NS-TC-024",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-09",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-09",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-09-F6",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-CLAIM-005",
+        "acceptable_alternate_ids": [],
+        "finding_type": "unsupported_claim",
+        "span_text": "trusted by thousands of teams",
+        "start": 63,
+        "end": 92,
+        "expected_finding": "This is a customer-count and social-proof claim with no approved evidence.",
+        "citation": "NS-DOC-CLAIMS section 3.5 Social proof",
+        "severity": "high",
+        "label": "unsupported",
+        "suggested_fix": "Remove the count and do not replace it with another unverified number.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-09 expected finding NS-DRAFT-09-F6."
+    },
+    {
+      "id": "NS-TC-025",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-09",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-09",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-09-F7",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FACT-010",
+        "acceptable_alternate_ids": [
+          "NS-FACT-002"
+        ],
+        "finding_type": "superseded_fact",
+        "span_text": "$10 per team member per month",
+        "start": 105,
+        "end": 134,
+        "expected_finding": "The $10 price is the old Team plan price; NS-FACT-010 was superseded by NS-FACT-002, which sets the current price at $12.",
+        "citation": "NS-DOC-PRICING section 2.4 Historical pricing",
+        "severity": "high",
+        "label": "outdated",
+        "suggested_fix": "Replace \"$10\" with \"$12\" and use the full approved price wording.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-09 expected finding NS-DRAFT-09-F7."
+    },
+    {
+      "id": "NS-TC-026",
+      "case_type": "positive",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-09",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-09",
+          "field": "text"
+        }
+      },
+      "target_finding_id": "NS-DRAFT-09-F8",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FMT-004",
+        "acceptable_alternate_ids": [],
+        "finding_type": "formatting_violation",
+        "span_text": "#planning #teamwork #productivity",
+        "start": 169,
+        "end": 202,
+        "expected_finding": "The post uses three hashtags, exceeding the limit of two per social post.",
+        "citation": "NS-DOC-EDITORIAL section 7.4 Social posts",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Remove one hashtag so at most two remain.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Derived directly from NS-DRAFT-09 expected finding NS-DRAFT-09-F8."
+    },
+    {
+      "id": "NS-TC-027",
+      "case_type": "negative",
+      "input": {
+        "type": "draft",
+        "id": "NS-DRAFT-10",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-10",
+          "field": "text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Compliant control draft; expected zero findings."
+    },
+    {
+      "id": "NS-TC-028",
+      "case_type": "negative",
+      "input": {
+        "type": "revised_draft",
+        "id": "NS-DRAFT-01",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-01",
+          "field": "revised_text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Revised text for NS-DRAFT-01; expected zero findings."
+    },
+    {
+      "id": "NS-TC-029",
+      "case_type": "negative",
+      "input": {
+        "type": "revised_draft",
+        "id": "NS-DRAFT-02",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-02",
+          "field": "revised_text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Revised text for NS-DRAFT-02; expected zero findings."
+    },
+    {
+      "id": "NS-TC-030",
+      "case_type": "negative",
+      "input": {
+        "type": "revised_draft",
+        "id": "NS-DRAFT-03",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-03",
+          "field": "revised_text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Revised text for NS-DRAFT-03; expected zero findings."
+    },
+    {
+      "id": "NS-TC-031",
+      "case_type": "negative",
+      "input": {
+        "type": "revised_draft",
+        "id": "NS-DRAFT-04",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-04",
+          "field": "revised_text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Revised text for NS-DRAFT-04; expected zero findings."
+    },
+    {
+      "id": "NS-TC-032",
+      "case_type": "negative",
+      "input": {
+        "type": "revised_draft",
+        "id": "NS-DRAFT-05",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-05",
+          "field": "revised_text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Revised text for NS-DRAFT-05; expected zero findings."
+    },
+    {
+      "id": "NS-TC-033",
+      "case_type": "negative",
+      "input": {
+        "type": "revised_draft",
+        "id": "NS-DRAFT-06",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-06",
+          "field": "revised_text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Revised text for NS-DRAFT-06; expected zero findings."
+    },
+    {
+      "id": "NS-TC-034",
+      "case_type": "negative",
+      "input": {
+        "type": "revised_draft",
+        "id": "NS-DRAFT-07",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-07",
+          "field": "revised_text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Revised text for NS-DRAFT-07; expected zero findings."
+    },
+    {
+      "id": "NS-TC-035",
+      "case_type": "negative",
+      "input": {
+        "type": "revised_draft",
+        "id": "NS-DRAFT-08",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-08",
+          "field": "revised_text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Revised text for NS-DRAFT-08; expected zero findings."
+    },
+    {
+      "id": "NS-TC-036",
+      "case_type": "negative",
+      "input": {
+        "type": "revised_draft",
+        "id": "NS-DRAFT-09",
+        "text_source": {
+          "file": "data/sample-drafts.json",
+          "draft_id": "NS-DRAFT-09",
+          "field": "revised_text"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Revised text for NS-DRAFT-09; expected zero findings."
+    },
+    {
+      "id": "NS-TC-037",
+      "case_type": "edge",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-01",
+        "text_source": {
+          "snippet_id": "NS-SNIP-01"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": [
+          {
+            "outcome": "needs_human_judgement",
+            "rule_or_fact_id": "NS-NAME-001",
+            "reason": "The literal star reference could be misread as a product-name issue; human review is acceptable for this edge case."
+          }
+        ]
+      },
+      "notes": "Literal star reference, not a brand-name error."
+    },
+    {
+      "id": "NS-TC-038",
+      "case_type": "edge",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-02",
+        "text_source": {
+          "snippet_id": "NS-SNIP-02"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Leverage used as a noun is allowed."
+    },
+    {
+      "id": "NS-TC-039",
+      "case_type": "edge",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-03",
+        "text_source": {
+          "snippet_id": "NS-SNIP-03"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Exactly one exclamation mark, at the limit."
+    },
+    {
+      "id": "NS-TC-040",
+      "case_type": "edge",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-04",
+        "text_source": {
+          "snippet_id": "NS-SNIP-04"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Exactly one emoji and two hashtags, at the limit."
+    },
+    {
+      "id": "NS-TC-041",
+      "case_type": "edge",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-05",
+        "text_source": {
+          "snippet_id": "NS-SNIP-05"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Headline is exactly 60 characters, at the limit."
+    },
+    {
+      "id": "NS-TC-042",
+      "case_type": "edge",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-06",
+        "text_source": {
+          "snippet_id": "NS-SNIP-06"
+        }
+      },
+      "target_finding_id": null,
+      "expected": {
+        "outcome": "no_finding",
+        "rule_or_fact_id": null,
+        "acceptable_alternate_ids": [],
+        "finding_type": null,
+        "span_text": null,
+        "start": null,
+        "end": null,
+        "expected_finding": null,
+        "citation": null,
+        "severity": null,
+        "label": null,
+        "suggested_fix": null,
+        "human_review_required": null,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Starter is free, so no price or tax sentence is required."
+    },
+    {
+      "id": "NS-TC-043",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-07",
+        "text_source": {
+          "snippet_id": "NS-SNIP-07"
+        }
+      },
+      "target_finding_id": "NS-SNIP-07-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-TONE-002",
+        "acceptable_alternate_ids": [],
+        "finding_type": "tone_violation",
+        "span_text": "Don't miss out: act now",
+        "start": 0,
+        "end": 23,
+        "expected_finding": "The phrase 'Don't miss out: act now' uses pressure and urgency language.",
+        "citation": "NS-DOC-VOICE section 2.2 Pressure-free language",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Replace 'Don't miss out: act now' with a calm statement such as 'Upgrade your plan when you're ready.'",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: pressure-free language."
+    },
+    {
+      "id": "NS-TC-044",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-08",
+        "text_source": {
+          "snippet_id": "NS-SNIP-08"
+        }
+      },
+      "target_finding_id": "NS-SNIP-08-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-NAME-002",
+        "acceptable_alternate_ids": [],
+        "finding_type": "naming_inconsistency",
+        "span_text": "kanban boards",
+        "start": 8,
+        "end": 21,
+        "expected_finding": "The label 'kanban boards' is not the approved feature name 'Focus Boards'.",
+        "citation": "NS-DOC-NAMING section 3.2 Feature names",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Replace 'kanban boards' with 'Focus Boards'.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: first of two separate feature-name findings."
+    },
+    {
+      "id": "NS-TC-045",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-08",
+        "text_source": {
+          "snippet_id": "NS-SNIP-08"
+        }
+      },
+      "target_finding_id": "NS-SNIP-08-F2",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-NAME-002",
+        "acceptable_alternate_ids": [],
+        "finding_type": "naming_inconsistency",
+        "span_text": "Gantt view",
+        "start": 26,
+        "end": 36,
+        "expected_finding": "The label 'Gantt view' is not the approved feature name 'Team Timeline'.",
+        "citation": "NS-DOC-NAMING section 3.2 Feature names",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Replace 'Gantt view' with 'Team Timeline'.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: second of two separate feature-name findings."
+    },
+    {
+      "id": "NS-TC-046",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-09",
+        "text_source": {
+          "snippet_id": "NS-SNIP-09"
+        }
+      },
+      "target_finding_id": "NS-SNIP-09-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-TERM-002",
+        "acceptable_alternate_ids": [],
+        "finding_type": "preferred_term",
+        "span_text": "package",
+        "start": 11,
+        "end": 18,
+        "expected_finding": "The word 'package' should be 'plan' when naming a commercial plan.",
+        "citation": "NS-DOC-NAMING section 4.2 Plans",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Replace 'package' with 'plan'.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: plan terminology."
+    },
+    {
+      "id": "NS-TC-047",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-10",
+        "text_source": {
+          "snippet_id": "NS-SNIP-10"
+        }
+      },
+      "target_finding_id": "NS-SNIP-10-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FMT-001",
+        "acceptable_alternate_ids": [],
+        "finding_type": "formatting_violation",
+        "span_text": "Plan Your Week With Focus Boards",
+        "start": 0,
+        "end": 32,
+        "expected_finding": "The headline uses title case instead of sentence case.",
+        "citation": "NS-DOC-EDITORIAL section 7.1 Headline case",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Rewrite the headline in sentence case: 'Plan your week with Focus Boards'.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: headline case."
+    },
+    {
+      "id": "NS-TC-048",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-11",
+        "text_source": {
+          "snippet_id": "NS-SNIP-11"
+        }
+      },
+      "target_finding_id": "NS-SNIP-11-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FMT-002",
+        "acceptable_alternate_ids": [],
+        "finding_type": "formatting_violation",
+        "span_text": "15/10/2026",
+        "start": 31,
+        "end": 41,
+        "expected_finding": "The date '15/10/2026' is not in the required human-readable format.",
+        "citation": "NS-DOC-EDITORIAL section 7.2 Dates",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Write the date as '15 October 2026'.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: date format."
+    },
+    {
+      "id": "NS-TC-049",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-12",
+        "text_source": {
+          "snippet_id": "NS-SNIP-12"
+        }
+      },
+      "target_finding_id": "NS-SNIP-12-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FMT-003",
+        "acceptable_alternate_ids": [],
+        "finding_type": "formatting_violation",
+        "span_text": "$12/mo",
+        "start": 17,
+        "end": 23,
+        "expected_finding": "The price uses the shortened unit '$12/mo' instead of the full price wording.",
+        "citation": "NS-DOC-EDITORIAL section 7.3 Prices",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Write the price as '$12 per team member per month'.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: price format; the required tax sentence is present."
+    },
+    {
+      "id": "NS-TC-050",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-13",
+        "text_source": {
+          "snippet_id": "NS-SNIP-13"
+        }
+      },
+      "target_finding_id": "NS-SNIP-13-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-FMT-005",
+        "acceptable_alternate_ids": [],
+        "finding_type": "formatting_violation",
+        "span_text": "Plan your team's week with Focus Boards, each task at a time.",
+        "start": 0,
+        "end": 61,
+        "expected_finding": "The headline is 61 characters, one character over the 60-character limit.",
+        "citation": "NS-DOC-EDITORIAL section 7.5 Headline length",
+        "severity": "low",
+        "label": "violation",
+        "suggested_fix": "Shorten the headline to 60 characters or fewer, for example 'Plan your week with Focus Boards'.",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: headline length; sentence case is otherwise correct."
+    },
+    {
+      "id": "NS-TC-051",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-14",
+        "text_source": {
+          "snippet_id": "NS-SNIP-14"
+        }
+      },
+      "target_finding_id": "NS-SNIP-14-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-CLAIM-004",
+        "acceptable_alternate_ids": [],
+        "finding_type": "unsupported_claim",
+        "span_text": "simpler than other planning apps",
+        "start": 21,
+        "end": 53,
+        "expected_finding": "The phrase 'simpler than other planning apps' compares Northstar Planner with other products.",
+        "citation": "NS-DOC-CLAIMS section 3.4 Competitors",
+        "severity": "medium",
+        "label": "unsupported",
+        "suggested_fix": "Remove the comparison and describe Northstar Planner's own benefit, for example 'Northstar Planner helps your team plan the week.'",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: competitor comparison."
+    },
+    {
+      "id": "NS-TC-052",
+      "case_type": "positive",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-15",
+        "text_source": {
+          "snippet_id": "NS-SNIP-15"
+        }
+      },
+      "target_finding_id": "NS-SNIP-15-F1",
+      "expected": {
+        "outcome": "finding",
+        "rule_or_fact_id": "NS-REQ-002",
+        "acceptable_alternate_ids": [],
+        "finding_type": "missing_required_wording",
+        "span_text": "Assist Suggestions can propose next steps for your tasks.",
+        "start": 0,
+        "end": 57,
+        "expected_finding": "The text mentions Assist Suggestions without the required AI disclosure.",
+        "citation": "NS-DOC-EDITORIAL section 6.2 AI disclosure",
+        "severity": "medium",
+        "label": "violation",
+        "suggested_fix": "Add the exact disclosure sentence: 'Suggestions are generated by AI and should be reviewed before use.'",
+        "human_review_required": false,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Snippet positive: missing AI disclosure."
+    },
+    {
+      "id": "NS-TC-053",
+      "case_type": "ambiguous",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-16",
+        "text_source": {
+          "snippet_id": "NS-SNIP-16"
+        }
+      },
+      "target_finding_id": "NS-SNIP-16-F1",
+      "expected": {
+        "outcome": "needs_human_judgement",
+        "rule_or_fact_id": "NS-FACT-009",
+        "acceptable_alternate_ids": [],
+        "finding_type": "ambiguous_wording",
+        "span_text": "available to everyone",
+        "start": 22,
+        "end": 43,
+        "expected_finding": "The phrase 'available to everyone' may overstate the availability of Assist Suggestions, which is in beta on the Team plan.",
+        "citation": "NS-DOC-PRODUCT section 4.4 Assist Suggestions",
+        "severity": "medium",
+        "label": "needs_human_judgement",
+        "suggested_fix": "Replace the availability claim with the approved wording: 'Assist Suggestions is in beta on the Team plan and supports English only.' Also add the required AI disclosure.",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Ambiguous snippet: could mean everyone on the Team plan; human judgement required."
+    },
+    {
+      "id": "NS-TC-054",
+      "case_type": "ambiguous",
+      "input": {
+        "type": "snippet",
+        "id": "NS-SNIP-17",
+        "text_source": {
+          "snippet_id": "NS-SNIP-17"
+        }
+      },
+      "target_finding_id": "NS-SNIP-17-F1",
+      "expected": {
+        "outcome": "needs_human_judgement",
+        "rule_or_fact_id": "NS-FACT-004",
+        "acceptable_alternate_ids": [
+          "NS-CLAIM-003"
+        ],
+        "finding_type": "ambiguous_wording",
+        "span_text": "strong security",
+        "start": 22,
+        "end": 37,
+        "expected_finding": "The phrase 'strong security' is vague and may imply a security claim not supported by the approved fact wording.",
+        "citation": "NS-DOC-SECURITY section 3.1 Encryption",
+        "severity": "medium",
+        "label": "needs_human_judgement",
+        "suggested_fix": "Replace 'strong security' with the approved wording: 'Customer data is encrypted in transit and at rest.'",
+        "human_review_required": true,
+        "acceptable_alternative_outcomes": []
+      },
+      "notes": "Ambiguous snippet: FACT-004 is primary, with NS-CLAIM-003 as an acceptable alternate."
+    }
+  ],
+  "coverage": {
+    "definition": "An ID appears in a case when it is the expected rule_or_fact_id, is listed in acceptable_alternate_ids, or is the rule_or_fact_id in an acceptable_alternative_outcome.",
+    "rules": [
+      {
+        "id": "NS-TONE-001",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-TONE-002",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-TONE-003",
+        "counts": {
+          "positive": 2,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 2
+        }
+      },
+      {
+        "id": "NS-NAME-001",
+        "counts": {
+          "positive": 4,
+          "negative": 0,
+          "edge": 1,
+          "ambiguous": 0,
+          "total": 5
+        }
+      },
+      {
+        "id": "NS-NAME-002",
+        "counts": {
+          "positive": 2,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 2
+        }
+      },
+      {
+        "id": "NS-TERM-001",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-TERM-002",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-BAN-001",
+        "counts": {
+          "positive": 2,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 2
+        }
+      },
+      {
+        "id": "NS-BAN-002",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-REQ-001",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-REQ-002",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FMT-001",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FMT-002",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FMT-003",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FMT-004",
+        "counts": {
+          "positive": 2,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 2
+        }
+      },
+      {
+        "id": "NS-FMT-005",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-CLAIM-001",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-CLAIM-002",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-CLAIM-003",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 1,
+          "total": 2
+        }
+      },
+      {
+        "id": "NS-CLAIM-004",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-CLAIM-005",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-CLAIM-006",
+        "counts": {
+          "positive": 0,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 1,
+          "total": 1
+        }
+      }
+    ],
+    "facts": [
+      {
+        "id": "NS-FACT-001",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FACT-002",
+        "counts": {
+          "positive": 2,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 2
+        }
+      },
+      {
+        "id": "NS-FACT-003",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FACT-004",
+        "counts": {
+          "positive": 0,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 1,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FACT-006",
+        "counts": {
+          "positive": 0,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 1,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FACT-007",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 1,
+          "total": 2
+        }
+      },
+      {
+        "id": "NS-FACT-008",
+        "counts": {
+          "positive": 1,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FACT-009",
+        "counts": {
+          "positive": 0,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 1,
+          "total": 1
+        }
+      },
+      {
+        "id": "NS-FACT-010",
+        "counts": {
+          "positive": 2,
+          "negative": 0,
+          "edge": 0,
+          "ambiguous": 0,
+          "total": 2
+        }
+      }
+    ],
+    "notes": [
+      "Counts include each case once per ID.",
+      "NS-FACT-002 appears only as an acceptable alternate citation in positive cases; it is never the primary expected fact."
+    ]
+  },
+  "known_coverage_gaps": [
+    {
+      "id": "NS-REQ-003",
+      "kind": "rule",
+      "reason": "Every offer in the pack is tied to the expired fact NS-FACT-003, so offer wording cannot be tested cleanly in isolation."
+    },
+    {
+      "id": "NS-CLAIM-006",
+      "kind": "rule",
+      "reason": "Only appears as a needs_human_judgement finding in draft 08; Task C classifies that draft's findings as ambiguous, so there is no clean positive case."
+    },
+    {
+      "id": "NS-FACT-004",
+      "kind": "fact",
+      "reason": "Only appears as the primary fact in ambiguous snippet 17; there is no clean positive case for the approved encryption wording."
+    },
+    {
+      "id": "NS-FACT-005",
+      "kind": "fact",
+      "reason": "No test case supplies the approved uptime target wording; adding one would require a new draft or snippet."
+    },
+    {
+      "id": "NS-FACT-006",
+      "kind": "fact",
+      "reason": "Only appears as a needs_human_judgement finding in draft 08; Task C classifies that draft's findings as ambiguous, so there is no clean positive case."
+    },
+    {
+      "id": "NS-FACT-009",
+      "kind": "fact",
+      "reason": "Only appears as the primary fact in ambiguous snippet 16; there is no clean positive case for Assist Suggestions availability."
+    }
+  ],
+  "results_template": [
+    {
+      "test_case_id": "NS-TC-001",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-002",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-003",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-004",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-005",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-006",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-007",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-008",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-009",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-010",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-011",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-012",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-013",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-014",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-015",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-016",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-017",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-018",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-019",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-020",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-021",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-022",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-023",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-024",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-025",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-026",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-027",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-028",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-029",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-030",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-031",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-032",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-033",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-034",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-035",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-036",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-037",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-038",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-039",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-040",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-041",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-042",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-043",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-044",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-045",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-046",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-047",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-048",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-049",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-050",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-051",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-052",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-053",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    },
+    {
+      "test_case_id": "NS-TC-054",
+      "run_date": null,
+      "tool_version": null,
+      "returned_findings": null,
+      "matched": null,
+      "notes": null,
+      "status": "not_run"
+    }
+  ]
+}
