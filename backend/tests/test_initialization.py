@@ -53,6 +53,52 @@ def test_initialization_does_not_seed_when_migration_fails(tmp_path):
     assert seeded is False
 
 
+def test_app_does_not_start_when_database_initialization_fails(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+
+    from app import main
+    from app.config import Settings
+    from app.main import create_app
+
+    settings = Settings(
+        _env_file=None,
+        database_url=f"sqlite:///{(tmp_path / 'startup-failure.db').as_posix()}",
+    )
+
+    def fail_initialization(*_args, **_kwargs):
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(main, "initialize_database", fail_initialization)
+    app = create_app(settings)
+
+    with pytest.raises(RuntimeError, match="Database initialization failed"):
+        with TestClient(app):
+            pass
+
+
+def test_seed_command_uses_migration_then_seed_initialization(monkeypatch, tmp_path):
+    from app import initialization, seed
+
+    settings = Settings(
+        _env_file=None,
+        database_url=f"sqlite:///{(tmp_path / 'seed-command.db').as_posix()}",
+        seed_demo_data=True,
+    )
+    calls: list[str] = []
+
+    def initialize(database, received_settings):
+        assert received_settings is settings
+        assert database.url == settings.database_url
+        calls.append("migrate-and-seed")
+
+    monkeypatch.setattr(seed, "get_settings", lambda: settings)
+    monkeypatch.setattr(initialization, "initialize_database", initialize)
+
+    seed.main()
+
+    assert calls == ["migrate-and-seed"]
+
+
 def test_sqlite_initialization_is_repeatable_and_uses_migrations(tmp_path):
     database = Database(f"sqlite:///{(tmp_path / 'repeat.db').as_posix()}")
     settings = Settings(_env_file=None, database_url=database.url, seed_demo_data=True)
