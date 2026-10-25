@@ -16,8 +16,8 @@ from .citations import CitationValidationError
 from .config import Settings, get_settings
 from .database import Database
 from .errors import ConflictError, NotFoundError, PersistenceError
+from .initialization import initialize_database
 from .rule_engine import RuleEngineError
-from .seed import seed_demo_data
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +34,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         try:
-            if settings.auto_create_tables:
-                database.create_all()
-            if settings.seed_demo_data:
-                with database.session_factory() as session:
-                    seed_demo_data(session)
-        except Exception:
-            # The app can still start so /health can report a degraded state.
-            logger.exception("Database initialization failed")
+            initialize_database(database, settings)
+        except Exception as exc:
+            logger.error(
+                "Database initialization failed; application startup aborted (%s).",
+                type(exc).__name__,
+            )
+            raise RuntimeError(
+                "Database initialization failed; application cannot start."
+            ) from None
         yield
         database.dispose()
 
