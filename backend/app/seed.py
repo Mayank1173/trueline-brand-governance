@@ -6,6 +6,8 @@ import logging
 
 from sqlalchemy.orm import Session
 
+from .config import get_settings
+from .database import Database
 from .models import ApprovedFact, Brand, Guideline
 from .seed_data import demo_seed_payload
 
@@ -41,3 +43,24 @@ def _upsert(session: Session, model, payload: dict) -> None:
     for key, value in payload.items():
         if key != "id":
             setattr(row, key, value)
+
+
+def main() -> None:
+    """Initialize the configured database with the demo dataset.
+
+    Run after migrations in deployment. The operation is idempotent and uses
+    the same settings and upsert path as application startup.
+    """
+    settings = get_settings()
+    database = Database(settings.database_url)
+    try:
+        if settings.auto_create_tables:
+            database.create_all()
+        with database.session_factory() as session:
+            seed_demo_data(session)
+    finally:
+        database.dispose()
+
+
+if __name__ == "__main__":
+    main()
