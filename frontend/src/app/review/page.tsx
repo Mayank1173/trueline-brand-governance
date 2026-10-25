@@ -1,17 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AiStatusNotice from "@/components/AiStatusNotice";
 import DisplayStatus from "@/components/DisplayStatus";
 import DraftEditor from "@/components/DraftEditor";
 import FindingCard, { type FindingState } from "@/components/FindingCard";
+import { fetchBrands, isLive } from "@/lib/api";
 import { brands, submitReview } from "@/lib/reviewService";
-import type { Finding, ReviewResponse } from "@/lib/types";
+import type { Brand, Finding, ReviewResponse } from "@/lib/types";
 import { applySuggestedFix } from "@/lib/applyFix";
 
 const field = "mt-1 w-full rounded-xl border border-line bg-surface p-2.5 text-sm text-ink placeholder:text-muted";
 
 export default function ReviewPage() {
-  const [brandId, setBrandId] = useState(brands[0].id);
+  const [availableBrands, setAvailableBrands] = useState<Brand[]>(isLive ? [] : brands);
+  const [brandId, setBrandId] = useState(isLive ? "" : brands[0].id);
   const [purpose, setPurpose] = useState("");
   const [draft, setDraft] = useState("");
   const [originalDraft, setOriginalDraft] = useState<string | null>(null);
@@ -25,7 +27,28 @@ export default function ReviewPage() {
   const stale = result !== null && reviewedText !== draft;
   const openCount = result ? result.findings.filter((f) => states[f.id] === "open").length : 0;
 
+  useEffect(() => {
+    if (!isLive) return;
+    let cancelled = false;
+    fetchBrands()
+      .then((items) => {
+        if (cancelled) return;
+        setAvailableBrands(items);
+        setBrandId(items[0].id);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Couldn't load brands.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function runReview() {
+    if (!brandId) {
+      setError("No backend brand is available for review.");
+      return;
+    }
     if (!draft.trim()) {
       setError("Paste or type a draft before submitting.");
       return;
@@ -87,7 +110,7 @@ export default function ReviewPage() {
             <div>
               <label htmlFor="brand" className="block text-sm font-medium">Brand</label>
               <select id="brand" value={brandId} onChange={(e) => setBrandId(e.target.value)} className={field}>
-                {brands.map((b) => (
+                {availableBrands.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
@@ -115,7 +138,7 @@ export default function ReviewPage() {
                   <button
                     type="button"
                     onClick={() => void runReview()}
-                    disabled={loading}
+                    disabled={loading || !brandId}
                     className="rounded-full border border-line px-4 py-1.5 text-sm font-medium text-ink hover:bg-surface-2 disabled:opacity-60"
                   >
                     Try again
@@ -126,7 +149,7 @@ export default function ReviewPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !brandId}
               className="rounded-full bg-maroon px-6 py-2.5 text-sm font-semibold text-white hover:bg-maroon-hover disabled:opacity-60"
             >
               {loading ? "Reviewing…" : result ? "Re-run review" : "Submit for review"}

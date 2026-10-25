@@ -1,8 +1,7 @@
 import type { AIStatus, Finding, ReviewRequest, ReviewResponse } from "./types";
 import { MOCK_BRANDS, mockSubmitReview } from "./mock/mockReviewService";
-import { errorMessage } from "./api";
+import { errorMessage, isLive } from "./api";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 const TIMEOUT_MS = 30000;
 
 const AI_STATUSES: string[] = [
@@ -34,8 +33,8 @@ function normalizeFinding(raw: unknown, index: number): Finding {
 }
 
 export async function submitReview(req: ReviewRequest): Promise<ReviewResponse> {
-  // Keep using sample data during frontend development.
-  if (USE_MOCK) {
+  // Sample data is used only when mock mode is explicitly enabled.
+  if (!isLive) {
     return mockSubmitReview(req);
   }
 

@@ -10,7 +10,7 @@ Next.js + TypeScript + Tailwind CSS frontend for Trueline, an explainable brand-
 | Dashboard | Live review list and counts (falls back to labelled sample data if the backend fails) |
 | Revision History | Live status and system events. Reviewer decisions appear once the backend saves them |
 | Brand Guidelines | Live rules and approved facts, read-only |
-| Approvals | **Mock only.** The UI is built; the backend decision endpoint is not connected yet |
+| Approvals | Live persisted reviews and approval/rejection decisions |
 
 ## Local setup
 
@@ -39,7 +39,9 @@ Open http://localhost:3000.
    ```
 3. Restart `npm run dev`. Environment variables are only read at startup.
 
-Delete `.env.local` to return to mock mode.
+To use mock mode explicitly, set `NEXT_PUBLIC_USE_MOCK=true`. The frontend otherwise
+uses the real API and reports connection errors instead of silently treating a missing
+configuration as a demo deployment.
 
 ## Environment variables
 
@@ -47,7 +49,7 @@ Only public values belong here. Never put API keys or Supabase service-role secr
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `NEXT_PUBLIC_USE_MOCK` | mock is on unless set to `false` | Switches between mock/sample data and the real API |
+| `NEXT_PUBLIC_USE_MOCK` | `false` / unset (live API) | Set to `true` to switch to mock/sample data |
 | `NEXT_PUBLIC_API_URL` | none | Base URL of the FastAPI backend, used when mock is off |
 
 ## Checks
@@ -70,7 +72,7 @@ There are no automated UI tests yet.
 | `/dashboard` | Review status counts and recent reviews |
 | `/guidelines` | Brand rules and approved facts, read-only |
 | `/review` | Draft Review: submit a draft, see findings, accept or dismiss fixes, re-run |
-| `/approvals` | Approve / Request changes / Reject UI. **Mock decisions only** |
+| `/approvals` | Select a persisted review, approve or reject it, and inspect persisted history |
 | `/history` | Per-review audit trail, split into status/system events and reviewer decisions |
 
 ## Structure
@@ -86,7 +88,7 @@ src/
     types.ts              API types
     api.ts                Fetch helpers and error handling
     reviewService.ts      Review requests (mock/live switch, 30 s timeout)
-    decisionService.ts    MOCK ONLY decision service. Swap point for the real endpoint
+    decisionService.ts    Human decision POST service
     reviewLabel.ts        Display helpers (short IDs, status text, finding counts)
     applyFix.ts           Applies a suggested fix to the draft safely
     format.ts             Deterministic UTC timestamp formatting
@@ -104,24 +106,21 @@ src/
 - **Facts that are no longer current** are marked "Not current" on the Guidelines page.
 - The Guidelines page always shows an "Illustrative demo data" disclaimer.
 
-## Mock approval decisions
-
-`/approvals` runs on a sample draft with mock decisions. Mock decisions are labelled `[MOCK]`, attributed to "Mock reviewer (not a real person)", are not sent anywhere, and never appear in Revision History.
-
-When the backend decision endpoint exists, replace the body of `submitDecision()` in `src/lib/decisionService.ts` with the real request. Nothing else should need to change.
-
 ## API endpoints used
 
-`POST /api/review`, `GET /api/reviews`, `GET /api/reviews/{id}/history`, `GET /api/brands/{id}/guidelines`, `GET /api/brands/{id}/facts`.
+`POST /api/review`, `GET /api/reviews`, `GET /api/reviews/{id}/history`, `POST /api/reviews/{id}/decision`, `GET /api/brands/{id}/guidelines`, `GET /api/brands/{id}/facts`.
 
-There is **no approve/decision endpoint yet.** The contract is defined by the backend and documented in `docs/api-contracts.md`.
+The decision request accepts `approved` or `rejected`, plus optional caller-supplied
+`reviewer` and `comment` fields. A successful response includes the updated
+status and `decision_event`; the UI then reloads persisted history. Repeating a
+decision for an already approved or rejected review returns HTTP 409 and is
+shown as an error rather than treated as success. The backend does not currently
+authenticate or authorize reviewer identity.
 
 ## Known gaps
 
-- Approvals use mock decisions; the real decision endpoint is not connected
-- Reviewer decisions in History stay empty until the backend records them
-- The brand list on Draft Review is a mock list, and Guidelines uses the fixed ID `brand_001` (could use `GET /api/brands`)
-- The header badge ("Live backend connected" / "Demo mode") reflects the environment variable, not a health check
+- Browser-level approval verification is manual; no automated UI test framework is configured
+- The header badge ("Live backend configured" / "Demo mode") reflects the environment variable, not a health check
 - `ai_status = success` and the timeout/degraded paths have not been seen live
 - Dashboard review rows are not clickable (no review detail page yet)
 - No automated UI tests

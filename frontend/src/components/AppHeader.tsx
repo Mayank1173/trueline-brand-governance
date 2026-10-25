@@ -1,4 +1,4 @@
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+import { isLive } from "@/lib/api";
 
 export default function AppHeader() {
   return (
@@ -9,7 +9,7 @@ export default function AppHeader() {
         <p className="mt-1 text-sm text-muted">
           Brand{" "}
           <span className="font-semibold text-ink">
-            Sample Brand
+            Trueline
           </span>
         </p>
       </div>
@@ -23,7 +23,7 @@ export default function AppHeader() {
           className="h-2 w-2 rounded-full bg-maroon"
         />
 
-        <span>{USE_MOCK ? "Demo mode · Backend not connected" : "Live backend connected"}</span>
+        <span>{isLive ? "Live backend configured" : "Demo mode · Mock data enabled"}</span>
       </div>
     </header>
   );

@@ -7,20 +7,18 @@ export type { Decision };
 
 const LABEL: Record<Decision, string> = {
   approved: "Approve",
-  changes_requested: "Request changes",
   rejected: "Reject",
 };
 
 interface Props {
   canReview: boolean;
   onDecide: (decision: Decision, comment: string) => Promise<void>;
-  isMock?: boolean;
 }
 
 const primary = "rounded-full bg-maroon px-4 py-2 text-sm font-semibold text-white hover:bg-maroon-hover";
 const secondary = "rounded-full border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-surface-2";
 
-export default function ApprovalActions({ canReview, onDecide, isMock }: Props) {
+export default function ApprovalActions({ canReview, onDecide }: Props) {
   const [comment, setComment] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [pending, setPending] = useState<Decision | null>(null);
@@ -30,7 +28,7 @@ export default function ApprovalActions({ canReview, onDecide, isMock }: Props) 
   if (!canReview) {
     return (
       <p className="rounded-xl border border-line bg-surface-2 p-3 text-sm text-muted">
-        Your role can view this review but can’t record decisions. Ask a reviewer.
+        This review is read-only because a decision has already been recorded.
       </p>
     );
   }
@@ -69,7 +67,7 @@ export default function ApprovalActions({ canReview, onDecide, isMock }: Props) 
     <div className="space-y-3">
       <div>
         <label htmlFor="decision-comment" className="block text-sm font-medium">
-          Comment <span className="font-normal text-muted">(required to request changes or reject)</span>
+          Comment <span className="font-normal text-muted">(required when rejecting)</span>
         </label>
         <textarea
           id="decision-comment"
@@ -88,7 +86,6 @@ export default function ApprovalActions({ canReview, onDecide, isMock }: Props) 
 
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => ask("approved")} className={primary}>Approve</button>
-        <button type="button" onClick={() => ask("changes_requested")} className={secondary}>Request changes</button>
         <button type="button" onClick={() => ask("rejected")} className={secondary}>Reject</button>
       </div>
 
@@ -106,11 +103,6 @@ export default function ApprovalActions({ canReview, onDecide, isMock }: Props) 
           draft as a human reviewer.
         </p>
         {comment.trim() && <p className="mt-2">Your comment: “{comment.trim()}”</p>}
-        {isMock && (
-          <p className="mt-3 rounded-lg border border-maroon-soft/60 p-2 text-xs">
-            <strong>Mock decision.</strong> It isn’t sent to the backend or saved.
-          </p>
-        )}
       </ConfirmDialog>
     </div>
   );

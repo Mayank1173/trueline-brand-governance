@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 import DisplayStatus from "@/components/DisplayStatus";
 import EmptyState from "@/components/EmptyState";
 import SampleDataNotice from "@/components/SampleDataNotice";
-import StatusBadge from "@/components/StatusBadge";
 import { fetchReviews, isLive } from "@/lib/api";
 import { formatUtc } from "@/lib/format";
 import { SAMPLE_DRAFTS } from "@/lib/mock/sampleData";
 import { findingsText, shortReviewId } from "@/lib/reviewLabel";
+import { countReviewStatuses, REVIEW_STATUSES } from "@/lib/reviewStatus";
 import type { ReviewStatus } from "@/lib/types";
 
 interface Row {
@@ -22,8 +22,6 @@ interface Row {
   fullId?: string;
 }
 
-const SAMPLE_STATUSES: ReviewStatus[] = ["draft", "in_review", "changes_requested", "approved"];
-
 const sampleRows: Row[] = SAMPLE_DRAFTS.map((d) => ({
   id: d.id,
   title: d.title,
@@ -31,8 +29,6 @@ const sampleRows: Row[] = SAMPLE_DRAFTS.map((d) => ({
   findingCount: d.open_findings,
   meta: `Version ${d.version} · Updated ${formatUtc(d.updated_at)} · ${d.open_findings} open finding(s)`,
 }));
-
-const isAwaiting = (r: Row) => r.status === "approved" && r.findingCount === 0;
 
 export default function DashboardPage() {
   const [rows, setRows] = useState<Row[] | null>(isLive ? null : sampleRows);
@@ -70,6 +66,7 @@ export default function DashboardPage() {
   }, []);
 
   const box = "rounded-2xl border border-line bg-surface p-4";
+  const statusCounts = countReviewStatuses(rows ?? []);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -79,7 +76,7 @@ export default function DashboardPage() {
             Welcome <span className="text-maroon-soft">back.</span>
           </h1>
           <p className="mt-3 text-sm text-muted">
-            Workspace: <span className="font-semibold text-ink">Sample Brand</span>
+             Workspace: <span className="font-semibold text-ink">Trueline</span>
           </p>
           <Link
             href="/review"
@@ -115,30 +112,13 @@ export default function DashboardPage() {
         <>
           <section aria-labelledby="counts-heading">
             <h2 id="counts-heading" className="text-lg font-semibold">Review status</h2>
-            <ul className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-              {usingSample ? (
-                SAMPLE_STATUSES.map((s) => (
-                  <li key={s} className={box}>
-                    <StatusBadge status={s} />
-                    <p className="mt-3 text-3xl font-bold">{rows.filter((r) => r.status === s).length}</p>
-                  </li>
-                ))
-              ) : (
-                <>
-                  <li className={box}>
-                    <StatusBadge status="needs_human_review" />
-                    <p className="mt-3 text-3xl font-bold">{rows.filter((r) => r.status === "needs_human_review").length}</p>
-                  </li>
-                  <li className={box}>
-                    <StatusBadge status="changes_requested" />
-                    <p className="mt-3 text-3xl font-bold">{rows.filter((r) => r.status === "changes_requested").length}</p>
-                  </li>
-                  <li className={box}>
-                    <DisplayStatus status="approved" findingCount={0} />
-                    <p className="mt-3 text-3xl font-bold">{rows.filter(isAwaiting).length}</p>
-                  </li>
-                </>
-              )}
+            <ul className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+              {REVIEW_STATUSES.map((status) => (
+                <li key={status} className={box}>
+                  <DisplayStatus status={status} findingCount={statusCounts[status]} />
+                  <p className="mt-3 text-3xl font-bold">{statusCounts[status]}</p>
+                </li>
+              ))}
             </ul>
           </section>
 
@@ -154,7 +134,7 @@ export default function DashboardPage() {
                   <li key={r.id} className={box}>
                     <div className="flex flex-wrap items-center gap-3">
                       <p className="font-semibold">{r.title}</p>
-                      <DisplayStatus status={r.status} findingCount={usingSample ? 1 : r.findingCount} />
+                      <DisplayStatus status={r.status} findingCount={r.findingCount} />
                     </div>
                     {r.subtitle && <p className="mt-1 text-sm text-muted">{r.subtitle}</p>}
                     <p className="mt-2 text-xs text-muted">{r.meta}</p>

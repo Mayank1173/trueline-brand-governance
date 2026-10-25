@@ -1,6 +1,8 @@
-import type { AIStatus, ReviewStatus } from "./types";
+import type { AIStatus, Brand, ReviewStatus } from "./types";
 
-export const isLive = process.env.NEXT_PUBLIC_USE_MOCK === "false";
+// Mock mode is opt-in. NEXT_PUBLIC_* values are inlined during `next build`,
+// so Vercel must set them before building the deployment.
+export const isLive = process.env.NEXT_PUBLIC_USE_MOCK !== "true";
 const TIMEOUT_MS = 15000;
 
 export function errorMessage(body: unknown, status: number): string {
@@ -33,7 +35,7 @@ export async function apiGet<T>(path: string): Promise<T> {
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(`${apiUrl}${path}`, { signal: controller.signal });
+    res = await fetch(`${apiUrl}${path}`, { cache: "no-store", signal: controller.signal });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("The request took too long and was cancelled.");
@@ -77,4 +79,53 @@ export async function fetchReviews(limit = 50): Promise<ReviewSummary[]> {
   const data = await apiGet<{ items?: unknown }>(`/api/reviews?limit=${limit}`);
   if (!Array.isArray(data.items)) throw new Error("The backend returned an unexpected review list.");
   return data.items as ReviewSummary[];
+}
+
+export async function fetchBrands(): Promise<Brand[]> {
+  const data = await apiGet<unknown>("/api/brands");
+  if (!Array.isArray(data)) throw new Error("The backend returned an unexpected brand list.");
+  const brands = data.filter(
+    (brand): brand is Brand =>
+      typeof brand === "object" &&
+      brand !== null &&
+      typeof (brand as { id?: unknown }).id === "string" &&
+      typeof (brand as { name?: unknown }).name === "string",
+  );
+  if (brands.length !== data.length) throw new Error("The backend returned an unexpected brand list.");
+  if (brands.length === 0) throw new Error("No brands are configured in the backend.");
+  return brands;
+}
+
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
+  if (!apiUrl) throw new Error("The API URL is missing. Check NEXT_PUBLIC_API_URL in .env.local.");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${apiUrl}${path}`, {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("The request took too long and was cancelled.");
+    }
+    throw new Error("Couldn't reach the backend. Check that it is running.");
+  } finally {
+    clearTimeout(timer);
+  }
+
+  let responseBody: unknown = null;
+  try {
+    responseBody = await res.json();
+  } catch {
+    // Keep the standard error for non-JSON responses.
+  }
+  if (!res.ok) throw new Error(errorMessage(responseBody, res.status));
+  return responseBody as T;
 }

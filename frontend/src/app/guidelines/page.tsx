@@ -2,9 +2,7 @@
 import { useEffect, useState } from "react";
 import SampleDataNotice from "@/components/SampleDataNotice";
 import { SAMPLE_GUIDELINES as g } from "@/lib/mock/sampleData";
-import { apiGet, isLive } from "@/lib/api";
-
-const BRAND_ID = "brand_001"; // same ID the review flow uses with the backend
+import { apiGet, fetchBrands, isLive } from "@/lib/api";
 
 interface Guideline {
   source_id: string;
@@ -152,17 +150,22 @@ export default function GuidelinesPage() {
   useEffect(() => {
     if (!isLive) return;
     let cancelled = false;
-    Promise.all([
-      apiGet<{ brand?: { name?: string }; guidelines?: unknown }>(`/api/brands/${BRAND_ID}/guidelines`),
-      apiGet<{ approved_facts?: unknown }>(`/api/brands/${BRAND_ID}/facts`),
-    ])
-      .then(([gl, fa]) => {
+    fetchBrands()
+      .then(async (brands) => {
+        const brand = brands[0];
+        const [guidelines, facts] = await Promise.all([
+          apiGet<{ brand?: { name?: string }; guidelines?: unknown }>(`/api/brands/${encodeURIComponent(brand.id)}/guidelines`),
+          apiGet<{ approved_facts?: unknown }>(`/api/brands/${encodeURIComponent(brand.id)}/facts`),
+        ]);
+        return { guidelines, facts };
+      })
+      .then(({ guidelines: gl, facts: fa }) => {
         if (cancelled) return;
         if (!Array.isArray(gl.guidelines) || !Array.isArray(fa.approved_facts)) {
           throw new Error("The backend returned an unexpected guidelines response.");
         }
         setData({
-          brandName: gl.brand?.name ?? BRAND_ID,
+          brandName: gl.brand?.name ?? "Configured brand",
           guidelines: gl.guidelines as Guideline[],
           facts: fa.approved_facts as Fact[],
         });

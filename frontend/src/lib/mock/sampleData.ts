@@ -4,9 +4,9 @@ import type { BrandGuidelines, DraftSummary, Revision } from "../workflowTypes";
 
 export const SAMPLE_DRAFTS: DraftSummary[] = [
   { id: "draft_001", title: "Spring sale Instagram post", status: "changes_requested", version: 3, updated_at: "2026-10-21T16:40:00Z", open_findings: 2 },
-  { id: "draft_002", title: "Product launch email", status: "in_review", version: 1, updated_at: "2026-10-21T09:10:00Z", open_findings: 0 },
+  { id: "draft_002", title: "Product launch email", status: "pending_approval", version: 1, updated_at: "2026-10-21T09:10:00Z", open_findings: 0 },
   { id: "draft_003", title: "Newsletter intro", status: "approved", version: 2, updated_at: "2026-10-18T14:00:00Z", open_findings: 0 },
-  { id: "draft_004", title: "Homepage banner copy", status: "draft", version: 1, updated_at: "2026-10-17T12:30:00Z", open_findings: 0 },
+  { id: "draft_004", title: "Homepage banner copy", status: "pending_approval", version: 1, updated_at: "2026-10-17T12:30:00Z", open_findings: 0 },
 ];
 
 // Newest first. Revisions of draft_001.
