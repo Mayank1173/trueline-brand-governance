@@ -10,7 +10,7 @@ Stack: Next.js (App Router) + TypeScript + Tailwind CSS v4. Font: IBM Plex Mono.
     npm install
     npm run dev
 
-Open http://localhost:3000. Mock mode is the default.
+Open http://localhost:3000. The real backend is used unless mock mode is explicitly enabled.
 
 ## Routes
 
@@ -27,7 +27,7 @@ Every page backed by fake data shows a "Sample data" notice.
 
 ## Mock vs real API
 
-`src/lib/reviewService.ts` is the single swap point. Mock is used unless `NEXT_PUBLIC_USE_MOCK=false`. Mock logic lives in `src/lib/mock/` and is kept separate from real API code. Do not put secrets in frontend env vars.
+Set `NEXT_PUBLIC_USE_MOCK=true` for an offline demo. Any other value uses the real API. Set `NEXT_PUBLIC_API_URL` to the backend base URL before building. Public environment variables are compiled into the browser bundle; do not put secrets in frontend env vars.
 
 ## API contract (approved by Mayank, NOT yet confirmed by backend)
 

@@ -3,6 +3,8 @@ export type ReviewStatus =
   | "in_review"
   | "changes_requested"
   | "needs_human_review"
+  | "pending_approval"
+  | "rejected"
   | "approved";
 
 export type Severity = "low" | "medium" | "high";
