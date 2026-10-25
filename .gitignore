@@ -152,6 +152,8 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
 .envrc
 .venv
 env/
@@ -159,6 +161,13 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Local backend databases and SQLite journals
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+backend/*.db-journal
+backend/*.sqlite-journal
 
 # Spyder project settings
 .spyderproject
