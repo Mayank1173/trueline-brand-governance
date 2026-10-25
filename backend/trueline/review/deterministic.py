@@ -354,6 +354,9 @@ def _compile_rules(guidelines: list[Guideline]) -> list[DeterministicRule]:
     rules: list[DeterministicRule] = []
 
     for g in guidelines:
+        # These rules are count/context checks implemented explicitly below.
+        if g.id in ("NS-TONE-001", "NS-FMT-004"):
+            continue
         # Skip guidelines without clear patterns
         if not g.text or not g.text.strip():
             continue
@@ -603,6 +606,12 @@ def check_banned_terms(draft_text: str, rules: list[DeterministicRule]) -> list[
     for rule in rules:
         if not rule.is_banned:
             continue
+        if rule.guideline_id == "NS-TONE-003" and not re.search(
+            r"\b(security|outage|sign-in|sign in|billing|incident|login|log in|password)\b",
+            draft_text,
+            re.IGNORECASE,
+        ):
+            continue
 
         for match in rule.pattern.finditer(draft_text):
             finding = Finding(
@@ -685,6 +694,120 @@ def check_required_phrases(draft_text: str, rules: list[DeterministicRule]) -> l
     return findings
 
 
+def _make_rule_finding(
+    *,
+    finding_id: str,
+    draft_text: str,
+    start: int,
+    end: int,
+    guideline: Guideline,
+    category: Category,
+    severity: Severity,
+    explanation: str,
+    suggested_fix: str,
+) -> Finding:
+    return Finding(
+        id=finding_id,
+        matched_text=draft_text[start:end],
+        start=start,
+        end=end,
+        category=category,
+        severity=severity,
+        explanation=explanation,
+        citation=Citation(
+            rule_id=guideline.id,
+            source=guideline.source,
+            excerpt=guideline.text[:200],
+            document_id=guideline.document_id,
+            section=guideline.section,
+        ),
+        suggested_fix=suggested_fix,
+        confidence=0.95,
+        requires_human_review=False,
+        label=None,
+        rule_id=guideline.id,
+    )
+
+
+def check_social_post_limits(
+    draft_text: str, guidelines: list[Guideline]
+) -> list[Finding]:
+    """Enforce NS-FMT-004's explicit count limits (one emoji, two hashtags)."""
+    findings: list[Finding] = []
+    for guideline in guidelines:
+        if guideline.id != "NS-FMT-004":
+            continue
+        emojis = list(re.finditer(r"[\U0001F300-\U0001FAFF]", draft_text))
+        hashtags = list(re.finditer(r"#[A-Za-z0-9_]+", draft_text))
+        severity = _parse_severity(guideline.severity_default)
+        if len(emojis) > 1:
+            start, end = emojis[0].start(), emojis[-1].end()
+            findings.append(_make_rule_finding(
+                finding_id=f"fmt004-emoji-{start}",
+                draft_text=draft_text,
+                start=start,
+                end=end,
+                guideline=guideline,
+                category=Category.FORMATTING,
+                severity=severity,
+                explanation=(
+                    f"Post uses {len(emojis)} emoji; NS-FMT-004 allows at most one."
+                ),
+                suggested_fix="Keep at most one emoji, or remove them.",
+            ))
+        if len(hashtags) > 2:
+            start, end = hashtags[0].start(), hashtags[-1].end()
+            findings.append(_make_rule_finding(
+                finding_id=f"fmt004-hashtags-{start}",
+                draft_text=draft_text,
+                start=start,
+                end=end,
+                guideline=guideline,
+                category=Category.FORMATTING,
+                severity=severity,
+                explanation=(
+                    f"Post uses {len(hashtags)} hashtags; NS-FMT-004 allows at most two."
+                ),
+                suggested_fix="Remove hashtags until at most two remain.",
+            ))
+    return findings
+
+
+def check_calm_voice_limits(
+    draft_text: str, guidelines: list[Guideline]
+) -> list[Finding]:
+    """Enforce NS-TONE-001's one-exclamation and no-all-caps limits."""
+    findings: list[Finding] = []
+    for guideline in guidelines:
+        if guideline.id != "NS-TONE-001":
+            continue
+        exclamations = list(re.finditer(r"!", draft_text))
+        all_caps = list(re.finditer(r"\b[A-Z]{3,}\b", draft_text))
+        if len(exclamations) <= 1 and not all_caps:
+            continue
+        starts = [m.start() for m in exclamations + all_caps]
+        ends = [m.end() for m in exclamations + all_caps]
+        start, end = min(starts), max(ends)
+        findings.append(_make_rule_finding(
+            finding_id=f"tone001-{start}",
+            draft_text=draft_text,
+            start=start,
+            end=end,
+            guideline=guideline,
+            category=Category.TONE,
+            severity=_parse_severity(guideline.severity_default),
+            explanation=(
+                "Text uses more than one exclamation mark or all-caps emphasis; "
+                "NS-TONE-001 allows at most one exclamation mark and no all-caps."
+            ),
+            suggested_fix=(
+                "Rewrite in sentence case with no more than one exclamation mark "
+                "across the piece."
+            ),
+        ))
+    return findings
+
+
 def run_deterministic_checks(
     draft_text: str,
     guidelines: list[Guideline],
@@ -703,6 +826,8 @@ def run_deterministic_checks(
         if rules:
             all_findings.extend(check_banned_terms(draft_text, rules))
             all_findings.extend(check_required_phrases(draft_text, rules))
+        all_findings.extend(check_social_post_limits(draft_text, guidelines))
+        all_findings.extend(check_calm_voice_limits(draft_text, guidelines))
 
     # Check approved facts for expiry, supersession, contradiction, etc.
     if approved_facts and evaluation_date:

@@ -10,6 +10,8 @@ Usage:
 """
 
 import json
+import os
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -17,6 +19,7 @@ from typing import Any
 
 from trueline.adapters.fastapi_adapter import (
     convert_review_response,
+    utf16_to_unicode_offset,
 )
 from trueline.models import (
     ApprovedFact,
@@ -71,6 +74,7 @@ class PredictedFinding:
     suggested_fix: str | None
     confidence: float
     requires_human_review: bool
+    label: str | None = None
 
 
 @dataclass
@@ -82,20 +86,27 @@ class MatchResult:
     match_score: float  # 0.0 to 1.0
 
 
-def load_northstar_data() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-    """Load all Northstar dataset files."""
-    data_dir = Path("data")
+def _default_northstar_data_dir() -> Path:
+    """Return the authoritative UTF-8 Northstar data directory."""
+    configured = os.environ.get("NORTHSTAR_DATA_DIR")
+    if configured:
+        return Path(configured)
+    return Path(__file__).resolve().parents[2] / "data" / "northstar-utf8"
 
-    # Load evaluation dataset (UTF-16)
-    with open(data_dir / "evaluation-dataset.json", encoding="utf-16") as f:
+
+def load_northstar_data(
+    data_dir: Path | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Load all Northstar dataset files from authoritative UTF-8 sources."""
+    data_dir = data_dir or _default_northstar_data_dir()
+
+    with open(data_dir / "evaluation-dataset.json", encoding="utf-8") as f:
         eval_data: dict[str, Any] = json.load(f)
 
-    # Load sample drafts (UTF-16)
-    with open(data_dir / "sample-drafts.json", encoding="utf-16") as f:
+    with open(data_dir / "sample-drafts.json", encoding="utf-8") as f:
         drafts_data: dict[str, Any] = json.load(f)
 
-    # Load guidelines (UTF-16)
-    with open(data_dir / "northstar-brand-guidelines.json", encoding="utf-16") as f:
+    with open(data_dir / "northstar-brand-guidelines.json", encoding="utf-8") as f:
         guidelines_data: dict[str, Any] = json.load(f)
 
     return eval_data, drafts_data, guidelines_data
@@ -268,23 +279,92 @@ def run_review_engine(text: str, guidelines: list[Guideline], facts: list[Approv
     return asyncio.run(engine.review(request))
 
 
+def _expand_span_to_sentence(text: str, start: int, end: int) -> tuple[int, int]:
+    """Expand a code-point span to its containing sentence."""
+    sentence_start = 0
+    for i in range(start - 1, -1, -1):
+        char = text[i]
+        if char == "\n":
+            sentence_start = i + 1
+            break
+        if char in ".!?" and (i + 1 == len(text) or text[i + 1].isspace()):
+            sentence_start = i + 1
+            break
+
+    sentence_end = len(text)
+    for i in range(end, len(text)):
+        char = text[i]
+        if char == "\n":
+            sentence_end = i
+            break
+        if char in ".!?" and (i + 1 == len(text) or text[i + 1].isspace()):
+            sentence_end = i + 1
+            break
+
+    while sentence_start < start and text[sentence_start].isspace():
+        sentence_start += 1
+    while sentence_end > end and text[sentence_end - 1].isspace():
+        sentence_end -= 1
+    return sentence_start, sentence_end
+
+
+def _trigger_span_for_missing_phrase(
+    text: str, guideline: Guideline | None
+) -> tuple[int, int] | None:
+    """Use the first trigger match as the span for a missing required phrase."""
+    if guideline is None:
+        return None
+    for pattern in guideline.trigger_patterns or guideline.patterns:
+        match = re.search(pattern, text)
+        if match:
+            return _expand_span_to_sentence(text, match.start(), match.end())
+    return None
+
+
 def convert_to_predicted(ai_response: AIReviewResponse, draft_text: str,
                          guidelines: list[Guideline], facts: list[ApprovedFact],
                          test_case_id: str) -> list[PredictedFinding]:
-    """Convert AI engine response to PredictedFinding list."""
+    """Convert AI engine response to PredictedFinding list.
+
+    The FastAPI adapter emits UTF-16 offsets, while the Northstar dataset uses
+    Unicode code-point offsets. Convert back before matching.
+    """
     fastapi_response = convert_review_response(
         ai_response, draft_text, guidelines, facts
     )
+    guidelines_by_id = {g.id: g for g in guidelines}
 
     predicted = []
     for i, f in enumerate(fastapi_response.findings):
+        start = (
+            utf16_to_unicode_offset(draft_text, f.start)
+            if f.start is not None
+            else None
+        )
+        end = (
+            utf16_to_unicode_offset(draft_text, f.end)
+            if f.end is not None
+            else None
+        )
+
+        matched_text = f.matched_text
+        if start is None or end is None:
+            trigger_span = _trigger_span_for_missing_phrase(
+                draft_text, guidelines_by_id.get(f.rule_id)
+            )
+            if trigger_span is not None:
+                start, end = trigger_span
+                matched_text = draft_text[start:end]
+        else:
+            start, end = _expand_span_to_sentence(draft_text, start, end)
+
         pf = PredictedFinding(
             test_case_id=test_case_id,
             finding_id=f.finding_id,
             rule_id=f.rule_id,
-            matched_text=f.matched_text,
-            start=f.start,
-            end=f.end,
+            matched_text=matched_text,
+            start=start,
+            end=end,
             category=f.category.value,
             severity=f.severity.value,
             explanation=f.explanation,
@@ -293,6 +373,7 @@ def convert_to_predicted(ai_response: AIReviewResponse, draft_text: str,
             suggested_fix=f.suggested_fix,
             confidence=f.confidence,
             requires_human_review=f.requires_human_review,
+            label=f.ai_label,
         )
         predicted.append(pf)
 
@@ -368,6 +449,19 @@ def match_findings(
     false_negatives = [expected[j] for j in range(len(expected)) if j not in used_expected]
 
     return matches, false_positives, false_negatives
+
+
+def _is_acceptable_alternative(
+    finding: PredictedFinding, alternatives: list[dict[str, Any]]
+) -> bool:
+    """Return True when a finding is an explicitly allowed alternative outcome."""
+    for alternative in alternatives:
+        if (
+            finding.rule_id == alternative.get("rule_or_fact_id")
+            and finding.label == alternative.get("outcome")
+        ):
+            return True
+    return False
 
 
 def compute_metrics(matches: list[MatchResult],
@@ -477,6 +571,9 @@ def run_evaluation(output_dir: Path | None = None) -> dict[str, Any]:
     # Group expected findings by input text (draft_id + type for drafts, snippet_id for snippets)
     # Key: (input_type, input_id) where input_type is "draft", "revised_draft", or "snippet"
     expected_by_input: dict[tuple[str, str], list[ExpectedFinding]] = {}
+    alternative_outcomes_by_input: dict[
+        tuple[str, str], list[dict[str, Any]]
+    ] = {}
     compliant_inputs: set[tuple[str, str]] = set()  # (input_type, input_id) for negative/edge
     input_case_types: dict[tuple[str, str], str] = {}  # Track case_type for reporting
 
@@ -494,27 +591,38 @@ def run_evaluation(output_dir: Path | None = None) -> dict[str, Any]:
             continue
 
         input_key = (input_type, input_id)
-        ef = ExpectedFinding(
-            test_case_id=tc_id,
-            finding_id=tc.get("target_finding_id") or f"{tc_id}-F1",
-            rule_or_fact_id=tc["expected"]["rule_or_fact_id"] or "",
-            acceptable_alternate_ids=tc["expected"].get("acceptable_alternate_ids", []),
-            finding_type=tc["expected"]["finding_type"] or "",
-            span_text=tc["expected"]["span_text"] or "",
-            start=tc["expected"]["start"] or 0,
-            end=tc["expected"]["end"] or 0,
-            expected_finding=tc["expected"]["expected_finding"] or "",
-            citation=tc["expected"]["citation"] or "",
-            severity=tc["expected"]["severity"] or "medium",
-            label=tc["expected"]["label"] or "violation",
-            suggested_fix=tc["expected"]["suggested_fix"] or "",
-            human_review_required=tc["expected"]["human_review_required"] or False,
-            case_type=case_type,
-            acceptable_alternative_outcomes=tc["expected"].get(
-                "acceptable_alternative_outcomes", []
-            ),
+        expected_data = tc["expected"]
+        alternative_outcomes_by_input[input_key] = expected_data.get(
+            "acceptable_alternative_outcomes", []
         )
-        expected_by_input.setdefault(input_key, []).append(ef)
+        if expected_data["outcome"] == "no_finding":
+            # Keep the input in the run so false positives are still counted,
+            # but do not synthesize an empty expected finding.
+            expected_by_input.setdefault(input_key, [])
+        else:
+            ef = ExpectedFinding(
+                test_case_id=tc_id,
+                finding_id=tc.get("target_finding_id") or f"{tc_id}-F1",
+                rule_or_fact_id=expected_data["rule_or_fact_id"] or "",
+                acceptable_alternate_ids=expected_data.get(
+                    "acceptable_alternate_ids", []
+                ),
+                finding_type=expected_data["finding_type"] or "",
+                span_text=expected_data["span_text"] or "",
+                start=expected_data["start"] or 0,
+                end=expected_data["end"] or 0,
+                expected_finding=expected_data["expected_finding"] or "",
+                citation=expected_data["citation"] or "",
+                severity=expected_data["severity"] or "medium",
+                label=expected_data["label"] or "violation",
+                suggested_fix=expected_data["suggested_fix"] or "",
+                human_review_required=expected_data["human_review_required"] or False,
+                case_type=case_type,
+                acceptable_alternative_outcomes=expected_data.get(
+                    "acceptable_alternative_outcomes", []
+                ),
+            )
+            expected_by_input.setdefault(input_key, []).append(ef)
         input_case_types[input_key] = case_type
         if case_type in ("negative", "edge"):
             compliant_inputs.add(input_key)
@@ -570,12 +678,20 @@ def run_evaluation(output_dir: Path | None = None) -> dict[str, Any]:
 
         # Match findings (all predicted vs all expected for this input)
         matches, false_positives, false_negatives = match_findings(predicted, expected)
+        alternatives = alternative_outcomes_by_input.get(input_key, [])
+        accepted_alternatives = [
+            fp for fp in false_positives
+            if _is_acceptable_alternative(fp, alternatives)
+        ]
+        false_positives = [
+            fp for fp in false_positives if fp not in accepted_alternatives
+        ]
         all_matches.extend(matches)
         all_false_positives.extend(false_positives)
         all_false_negatives.extend(false_negatives)
 
         # Track compliant input findings
-        if input_key in compliant_inputs and len(predicted) > 0:
+        if input_key in compliant_inputs and len(predicted) > len(accepted_alternatives):
             compliant_inputs_with_findings += 1
 
         per_input_results.append({
@@ -584,6 +700,7 @@ def run_evaluation(output_dir: Path | None = None) -> dict[str, Any]:
             "text_length": len(text),
             "expected_count": len(expected),
             "predicted_count": len(predicted),
+            "accepted_alternative_count": len(accepted_alternatives),
             "tp": len(matches),
             "fp": len(false_positives),
             "fn": len(false_negatives),
